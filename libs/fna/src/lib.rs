@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
-use nucleotides::Nucleotides;
+use nucleotides::sequence::Sequence;
 
 #[derive(Default)]
 pub struct FnaRecord {
     pub header: String,
-    pub content: Nucleotides,
+    pub content: Sequence,
 }
 
 pub struct FnaFile {
@@ -33,7 +33,7 @@ impl FnaFile {
                     .header
                     .push_str(line.get(1..).ok_or("failed to get slice \"1..\"")?);
             } else {
-                let mut nucleotides = Nucleotides::from_str(line)?;
+                let mut nucleotides = Sequence::from_str(line)?;
 
                 current_record.content.0.append(&mut nucleotides.0);
             }
