@@ -158,6 +158,32 @@ impl Sequence {
         islands
     }
 
+    pub fn cpg_islands_metrics(
+        &self,
+        window: usize,
+        step: usize,
+    ) -> (Vec<usize>, Vec<f64>, Vec<f64>) {
+        let mut positions = Vec::new();
+        let mut gc_values = Vec::new();
+        let mut oe_values = Vec::new();
+
+        let mut start = 0;
+        while start + window <= self.length() {
+            let slice = &self.0[start..start + window];
+
+            let gc = Self::gc_percent(slice);
+            let oe = Self::observed_expected_cpg(slice);
+
+            positions.push(start + window / 2);
+            gc_values.push(gc);
+            oe_values.push(oe);
+
+            start += step;
+        }
+
+        (positions, gc_values, oe_values)
+    }
+
     fn observed_expected_cpg(seq: &[Nucleotide]) -> f64 {
         let observed_gc_count = Self::cg_pair_count(seq);
 
