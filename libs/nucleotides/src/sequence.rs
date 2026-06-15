@@ -5,6 +5,13 @@ use crate::nucleotide::Nucleotide;
 #[derive(Default, Clone)]
 pub struct Sequence(pub Vec<Nucleotide>);
 
+#[derive(Default, Clone)]
+pub struct CpgIsland {
+    pub start: usize,
+    pub end: usize,
+    pub seq: Sequence,
+}
+
 impl Display for Sequence {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for n in &self.0 {
@@ -57,13 +64,7 @@ impl Sequence {
 
     /// Counts Guanine and Cytosine nucleotides
     pub fn get_gc_content(&self) -> f64 {
-        let gc = self
-            .0
-            .iter()
-            .filter(|n| matches!(n, Nucleotide::Guanine | Nucleotide::Cytosine)) // yeild only G and C
-            .count();
-
-        (gc as f64) / (self.0.len() as f64) * 100.0
+        Self::gc_percent(&self.0)
     }
 
     /// Returns count of nucleotides in sequence
@@ -95,6 +96,105 @@ impl Sequence {
 
         Ok(transcribed)
     }
+
+    /// Find CpG islands with shifting window
+    ///
+    pub fn find_cpg_islands(
+        &self,
+        min_len: usize,
+        min_gc: f64,
+        min_oe: f64,
+        step: usize,
+    ) -> Vec<CpgIsland> {
+        let mut islands = Vec::new();
+        let seq_len = self.length();
+
+        let mut i = 0;
+        while i <= (seq_len - min_len) {
+            let window = &self.0[i..(i + min_len)];
+            let gc = Self::gc_percent(window);
+            let observed_expected = Self::observed_expected_cpg(window);
+
+            if gc >= min_gc && observed_expected >= min_oe {
+                let mut start = i;
+                let mut end = i + min_len;
+
+                // Expand to the left side
+                while start > 0 {
+                    let prev = &self.0[(start - 1)..(start + min_len - 1)];
+
+                    if Self::gc_percent(prev) >= min_gc
+                        && Self::observed_expected_cpg(prev) >= min_oe
+                    {
+                        start -= 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                // Expand to the right side
+                while end < seq_len {
+                    let next = &self.0[(end - min_len + 1)..(end + 1)];
+
+                    if Self::gc_percent(next) >= min_gc
+                        && Self::observed_expected_cpg(next) >= min_oe
+                    {
+                        end += 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                let mut seq = Sequence::default();
+                seq.0.extend_from_slice(&self.0[start..end]);
+
+                islands.push(CpgIsland { start, end, seq });
+                i = end;
+            } else {
+                i += step;
+            }
+        }
+
+        islands
+    }
+
+    fn observed_expected_cpg(seq: &[Nucleotide]) -> f64 {
+        let observed_gc_count = Self::cg_pair_count(seq);
+
+        let c_count = Self::nucleotide_count(seq, Nucleotide::Cytosine);
+        let g_count = Self::nucleotide_count(seq, Nucleotide::Guanine);
+        let length = seq.len();
+
+        if c_count == 0 || g_count == 0 || length == 0 {
+            return 0.0;
+        }
+
+        let expected_gc_count = c_count * g_count / seq.len();
+        (observed_gc_count as f64) / (expected_gc_count as f64)
+    }
+
+    fn gc_percent(seq: &[Nucleotide]) -> f64 {
+        let gc = seq
+            .iter()
+            .filter(|n| matches!(n, Nucleotide::Guanine | Nucleotide::Cytosine)) // yeild only G and C
+            .count();
+
+        (gc as f64) / (seq.len() as f64) * 100.0
+    }
+
+    fn nucleotide_count(seq: &[Nucleotide], expected: Nucleotide) -> usize {
+        seq.iter().filter(|n| **n == expected).count()
+    }
+
+    fn cg_pair_count(seq: &[Nucleotide]) -> usize {
+        Self::pair_count(seq, Nucleotide::Cytosine, Nucleotide::Guanine)
+    }
+
+    fn pair_count(seq: &[Nucleotide], first: Nucleotide, second: Nucleotide) -> usize {
+        seq.windows(2)
+            .filter(|w| w[0] == first && w[1] == second)
+            .count()
+    }
 }
 
 #[cfg(test)]
@@ -124,5 +224,28 @@ mod tests {
 
         // Then
         assert_eq!(rna.to_string(), "AUGGCCUAA");
+    }
+
+    #[test]
+    fn find_cpg_islands_test() {
+        // Given
+        const WINDOW_LEN: usize = 150;
+        const WINDOW_STEP: usize = 10;
+        const MIN_GC: f64 = 50.0;
+        const MIN_OE: f64 = 0.6;
+
+        let mut raw_data = String::new();
+        raw_data.push_str(&"A".repeat(100));
+        raw_data.push_str(&"CGCGCGCGCGCGCGCGCG".repeat(20));
+        raw_data.push_str(&"T".repeat(100));
+
+        let seq = Sequence::from_str(&raw_data).unwrap();
+
+        // When
+        let islands = seq.find_cpg_islands(WINDOW_LEN, MIN_GC, MIN_OE, WINDOW_STEP);
+
+        assert_eq!(islands.len(), 1);
+        assert_eq!(islands[0].start, 25);
+        assert_eq!(islands[0].end, 535);
     }
 }
