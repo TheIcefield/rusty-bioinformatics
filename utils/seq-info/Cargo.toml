@@ -7,3 +7,4 @@ edition = "2024"
 clap = { version = "4.6.1", features = ["derive"] }
 fna = { path = "../../libs/fna" }
 nucleotides = { path = "../../libs/nucleotides" }
+plotters = "0.3.3"
