@@ -1,12 +1,15 @@
-use clap::{Parser, Subcommand};
+use fna::FnaFile;
 use nucleotides::nucleotide::Nucleotide;
+
+use clap::{Parser, Subcommand};
+use plotters::{backend::BitMapBackend, prelude::*, style::full_palette::WHITE};
 
 use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
 
-use fna::FnaFile;
+pub mod find_cmd;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -44,24 +47,7 @@ enum ContentSubcommand {
     },
 
     #[command(subcommand)]
-    Find(FindSubcommand),
-}
-
-#[derive(Subcommand, Debug)]
-enum FindSubcommand {
-    CpgIslands {
-        #[arg(long, default_value_t = 200)]
-        min_len: usize,
-
-        #[arg(long, default_value_t = 50.0)]
-        min_gc: f64,
-
-        #[arg(long, default_value_t = 0.6)]
-        min_oe: f64,
-
-        #[arg(long, default_value_t = 10)]
-        step: usize,
-    },
+    Find(find_cmd::FindSubcommand),
 }
 
 fn read_fna(path: &Path) -> Result<FnaFile, String> {
@@ -135,27 +121,62 @@ fn main() {
             }
         }
 
-        Some(ContentSubcommand::Find(FindSubcommand::CpgIslands {
+        Some(ContentSubcommand::Find(find_cmd::FindSubcommand::CpgIslands {
             min_len,
             min_gc,
             min_oe,
             step,
+            plot,
         })) => {
-            for (idx, record) in fna.records.iter().enumerate() {
-                println!("#{idx}: {}.", record.header);
-
-                for (island_idx, island) in record
-                    .content
-                    .find_cpg_islands(*min_len, *min_gc, *min_oe, *step)
-                    .into_iter()
-                    .enumerate()
-                {
-                    println!(
-                        "    Island #{island_idx}, start: {}, end: {}",
-                        island.start, island.end
-                    );
-                }
+            if let Some(charts_dir) = plot {
+                let _ = std::fs::create_dir(charts_dir);
             }
+
+            fna.records
+                .iter()
+                .enumerate()
+                .map(|(record_idx, record)| {
+                    let islands = record
+                        .content
+                        .find_cpg_islands(*min_len, *min_gc, *min_oe, *step);
+
+                    let metrics = record.content.cpg_islands_metrics(*min_len, *step);
+
+                    (record_idx, record, islands, metrics)
+                })
+                .for_each(
+                    |(record_idx, record, islands, (positions, gc_values, oe_values))| {
+                        println!("#{record_idx}: {}.", record.header);
+
+                        for (island_idx, island) in islands.iter().enumerate() {
+                            println!(
+                                "    Island #{island_idx}, start: {}, end: {}",
+                                island.start, island.end
+                            );
+                        }
+
+                        if let Some(charts_dir) = plot {
+                            let chart_path = charts_dir.join(format!("{record_idx}.png"));
+                            let root =
+                                BitMapBackend::new(&chart_path, (1200, 800)).into_drawing_area();
+
+                            if let Err(err) = root.fill(&WHITE) {
+                                eprintln!("{err}");
+                                return;
+                            }
+
+                            if let Err(err) = find_cmd::plot_cpg_islands(
+                                &root,
+                                *min_gc,
+                                *min_oe,
+                                (&positions, &gc_values, &oe_values),
+                                &islands,
+                            ) {
+                                eprintln!("{err}");
+                            }
+                        }
+                    },
+                );
         }
 
         None => eprintln!("Subcommand not provided!"),
