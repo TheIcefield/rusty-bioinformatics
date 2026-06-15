@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use nucleotides::nucleotide::Nucleotide;
 
 use std::{
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 
@@ -41,6 +41,26 @@ enum ContentSubcommand {
     Transcribe {
         #[arg(short, long)]
         out: PathBuf,
+    },
+
+    #[command(subcommand)]
+    Find(FindSubcommand),
+}
+
+#[derive(Subcommand, Debug)]
+enum FindSubcommand {
+    CpgIslands {
+        #[arg(long, default_value_t = 200)]
+        min_len: usize,
+
+        #[arg(long, default_value_t = 50.0)]
+        min_gc: f64,
+
+        #[arg(long, default_value_t = 0.6)]
+        min_oe: f64,
+
+        #[arg(long, default_value_t = 10)]
+        step: usize,
     },
 }
 
@@ -103,8 +123,6 @@ fn main() {
         }
 
         Some(ContentSubcommand::Transcribe { out }) => {
-            use std::io::Write;
-
             let mut file = std::fs::File::create(out).unwrap();
 
             for record in fna.records.iter() {
@@ -113,6 +131,29 @@ fn main() {
                 match record.content.transcribe() {
                     Ok(seq) => writeln!(file, "{seq}").unwrap(),
                     Err(err) => eprintln!("{err}"),
+                }
+            }
+        }
+
+        Some(ContentSubcommand::Find(FindSubcommand::CpgIslands {
+            min_len,
+            min_gc,
+            min_oe,
+            step,
+        })) => {
+            for (idx, record) in fna.records.iter().enumerate() {
+                println!("#{idx}: {}.", record.header);
+
+                for (island_idx, island) in record
+                    .content
+                    .find_cpg_islands(*min_len, *min_gc, *min_oe, *step)
+                    .into_iter()
+                    .enumerate()
+                {
+                    println!(
+                        "    Island #{island_idx}, start: {}, end: {}",
+                        island.start, island.end
+                    );
                 }
             }
         }
