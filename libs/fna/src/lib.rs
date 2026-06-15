@@ -65,7 +65,7 @@ mod tests {
         // Then
         assert_eq!(fna.records.len(), 1);
         assert_eq!(fna.records[0].header, "some_header");
-        assert_eq!(fna.records[0].content.0.len(), 32);
+        assert_eq!(fna.records[0].content.length(), 32);
         assert_eq!(fna.records[0].content.get_gc_content(), 53.125);
     }
 }
