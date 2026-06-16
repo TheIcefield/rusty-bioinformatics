@@ -158,7 +158,7 @@ fn main() {
                         if let Some(charts_dir) = plot {
                             let chart_path = charts_dir.join(format!("{record_idx}.png"));
                             let root =
-                                BitMapBackend::new(&chart_path, (1200, 800)).into_drawing_area();
+                                BitMapBackend::new(&chart_path, (1200, 1000)).into_drawing_area();
 
                             if let Err(err) = root.fill(&WHITE) {
                                 eprintln!("{err}");
@@ -167,6 +167,7 @@ fn main() {
 
                             if let Err(err) = find_cmd::plot_cpg_islands(
                                 &root,
+                                &format!("{} #{record_idx}", record.header),
                                 *min_gc,
                                 *min_oe,
                                 (&positions, &gc_values, &oe_values),

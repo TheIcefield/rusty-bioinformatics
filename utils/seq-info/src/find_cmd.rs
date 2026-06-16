@@ -108,11 +108,15 @@ fn mark_cpg_islands(
 
 pub fn plot_cpg_islands(
     root: &DrawingArea<BitMapBackend, Shift>,
+    title: &str,
     min_gc: f64,
     min_oe: f64,
     metrics: (&[usize], &[f64], &[f64]),
     islands: &[CpgIsland],
 ) -> Result<(), Box<dyn std::error::Error>> {
+    const FONT_NAME: &str = "sans-serif";
+    const TITLE_FONT_SIZE: f64 = 30f64;
+    const CAPTION_FONT_SIZE: f64 = 20f64;
     const OE_MIN: f64 = 0.0;
     const OE_MAX: f64 = 2.0;
     const GC_MIN: f64 = 0.0;
@@ -122,17 +126,20 @@ pub fn plot_cpg_islands(
     let x_min = *positions.first().unwrap_or(&0) as f64;
     let x_max = *positions.last().unwrap_or(&0) as f64;
 
-    let (upper, lower) = root.split_vertically(400);
+    root.titled(title, (FONT_NAME, TITLE_FONT_SIZE))?;
+
+    let (upper, lower) = root.split_vertically(500);
 
     let mut upper_chart = ChartBuilder::on(&upper)
-        .caption("Observed/Expected CpG", ("sans-serif", 20))
+        .caption("Observed/Expected CpG", (FONT_NAME, CAPTION_FONT_SIZE))
         .margin(10)
+        .margin_top(30)
         .x_label_area_size(40)
         .y_label_area_size(50)
         .build_cartesian_2d(x_min..x_max, OE_MIN..OE_MAX)?;
 
     let mut lower_chart = ChartBuilder::on(&lower)
-        .caption("GC content (%)", ("sans-serif", 20))
+        .caption("GC content (%)", (FONT_NAME, CAPTION_FONT_SIZE))
         .margin(10)
         .x_label_area_size(40)
         .y_label_area_size(50)
