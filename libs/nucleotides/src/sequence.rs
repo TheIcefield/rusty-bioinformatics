@@ -106,7 +106,7 @@ impl Sequence {
         min_oe: f64,
         step: usize,
     ) -> Vec<CpgIsland> {
-        let mut islands = Vec::new();
+        let mut islands = Vec::<(usize, usize)>::new();
         let seq_len = self.length();
 
         let mut i = 0;
@@ -145,17 +145,29 @@ impl Sequence {
                     }
                 }
 
-                let mut seq = Sequence::default();
-                seq.0.extend_from_slice(&self.0[start..end]);
-
-                islands.push(CpgIsland { start, end, seq });
+                islands.push((start, end));
                 i = end;
             } else {
                 i += step;
             }
         }
 
-        islands
+        // Sort islands
+        islands.sort_by_key(|island| island.0);
+
+        // Merge intersected CpG islands
+        let merged = Self::merge_cpg_islands(islands);
+
+        // Create slices
+        merged
+            .into_iter()
+            .map(|(start, end)| {
+                let mut seq = Sequence::default();
+                seq.0.extend_from_slice(&self.0[start..end]);
+
+                CpgIsland { start, end, seq }
+            })
+            .collect()
     }
 
     pub fn cpg_islands_metrics(
@@ -197,6 +209,33 @@ impl Sequence {
 
         let expected_gc_count = c_count * g_count / seq.len();
         (observed_gc_count as f64) / (expected_gc_count as f64)
+    }
+
+    fn merge_cpg_islands(islands: Vec<(usize, usize)>) -> Vec<(usize, usize)> {
+        if islands.is_empty() {
+            return islands;
+        }
+
+        let mut merged = Vec::with_capacity(islands.len());
+
+        let mut current = islands[0];
+        for next in islands.iter().skip(1) {
+            // Check if two islands intersected
+            if next.0 <= current.1 {
+                // merge intersected islands
+                current.1 = current.1.max(next.1);
+            } else {
+                // store island and move to the next island
+                merged.push(current);
+                current = *next;
+            }
+        }
+
+        // Store last island
+        merged.push(current);
+
+        merged.shrink_to_fit();
+        merged
     }
 
     fn gc_percent(seq: &[Nucleotide]) -> f64 {
