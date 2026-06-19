@@ -4,10 +4,7 @@ use nucleotides::nucleotide::Nucleotide;
 use clap::{Parser, Subcommand};
 use plotters::{backend::BitMapBackend, prelude::*, style::full_palette::WHITE};
 
-use std::{
-    io::{Read, Write},
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 
 pub mod find_cmd;
 
@@ -41,35 +38,15 @@ enum ContentSubcommand {
         #[arg(long)]
         gc: bool,
     },
-    Transcribe {
-        #[arg(short, long)]
-        out: PathBuf,
-    },
 
     #[command(subcommand)]
     Find(find_cmd::FindSubcommand),
 }
 
-fn read_fna(path: &Path) -> Result<FnaFile, String> {
-    let mut file = std::fs::File::open(path).unwrap();
-
-    let mut raw_data = String::new();
-    file.read_to_string(&mut raw_data)
-        .map_err(|err| err.to_string())?;
-
-    FnaFile::read(&raw_data)
-}
-
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    let fna = match read_fna(&cli.file) {
-        Ok(fna) => fna,
-        Err(err) => {
-            eprintln!("{err}");
-            return;
-        }
-    };
+    let fna = FnaFile::open(&cli.file)?;
 
     match &cli.command {
         Some(ContentSubcommand::Info {
@@ -108,19 +85,6 @@ fn main() {
             }
         }
 
-        Some(ContentSubcommand::Transcribe { out }) => {
-            let mut file = std::fs::File::create(out).unwrap();
-
-            for record in fna.records.iter() {
-                writeln!(file, "> {}", record.header).unwrap();
-
-                match record.content.transcribe() {
-                    Ok(seq) => writeln!(file, "{seq}").unwrap(),
-                    Err(err) => eprintln!("{err}"),
-                }
-            }
-        }
-
         Some(ContentSubcommand::Find(find_cmd::FindSubcommand::CpgIslands {
             min_len,
             min_gc,
@@ -144,8 +108,8 @@ fn main() {
 
                     (record_idx, record, islands, metrics)
                 })
-                .for_each(
-                    |(record_idx, record, islands, (positions, gc_values, oe_values))| {
+                .try_for_each(
+                    |(record_idx, record, islands, (positions, gc_values, oe_values))| -> Result<(), Box<dyn std::error::Error>> {
                         println!("#{record_idx}: {}.", record.header);
 
                         for (island_idx, island) in islands.iter().enumerate() {
@@ -160,10 +124,7 @@ fn main() {
                             let root =
                                 BitMapBackend::new(&chart_path, (1200, 1000)).into_drawing_area();
 
-                            if let Err(err) = root.fill(&WHITE) {
-                                eprintln!("{err}");
-                                return;
-                            }
+                            root.fill(&WHITE)?;
 
                             if let Err(err) = find_cmd::plot_cpg_islands(
                                 &root,
@@ -176,10 +137,14 @@ fn main() {
                                 eprintln!("{err}");
                             }
                         }
+
+                        Ok(())
                     },
-                );
+                )?;
         }
 
         None => eprintln!("Subcommand not provided!"),
     }
+
+    Ok(())
 }

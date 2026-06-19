@@ -11,17 +11,7 @@ pub enum Nucleotide {
 
 impl Display for Nucleotide {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Adenine => 'A',
-                Self::Guanine => 'G',
-                Self::Cytosine => 'C',
-                Self::Thymine => 'T',
-                Self::Uracil => 'U',
-            }
-        )
+        write!(f, "{}", self.to_char())
     }
 }
 
@@ -36,6 +26,18 @@ impl TryFrom<char> for Nucleotide {
             't' => Ok(Self::Thymine),
             'u' => Ok(Self::Uracil),
             _ => Err(format!("\"{value}\" is not a nucleotide")),
+        }
+    }
+}
+
+impl Nucleotide {
+    pub fn to_char(&self) -> char {
+        match self {
+            Self::Adenine => 'A',
+            Self::Guanine => 'G',
+            Self::Cytosine => 'C',
+            Self::Thymine => 'T',
+            Self::Uracil => 'U',
         }
     }
 }
