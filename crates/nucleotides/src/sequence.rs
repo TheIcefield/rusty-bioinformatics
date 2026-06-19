@@ -50,6 +50,10 @@ impl FromStr for Sequence {
 }
 
 impl Sequence {
+    pub fn to_string(seq: &[Nucleotide]) -> String {
+        seq.iter().map(|n| n.to_char()).collect()
+    }
+
     pub fn is_dna(&self) -> bool {
         self.get_kind() == SequenceKind::Dna
     }

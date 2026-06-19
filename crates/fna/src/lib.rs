@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{io::Read, path::Path, str::FromStr};
 
 use nucleotides::sequence::Sequence;
 
@@ -13,7 +13,15 @@ pub struct FnaFile {
 }
 
 impl FnaFile {
-    pub fn read(s: &str) -> Result<Self, String> {
+    pub fn open(p: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut input = std::fs::File::open(p)?;
+        let mut raw_data = String::new();
+        input.read_to_string(&mut raw_data)?;
+
+        Self::from_text(&raw_data)
+    }
+
+    pub fn from_text(s: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let mut records = Vec::<FnaRecord>::new();
         let mut current_record = FnaRecord::default();
 
@@ -60,7 +68,7 @@ mod tests {
                       \nACGTCGTAGTACGTGC";
 
         // When
-        let fna = FnaFile::read(raw_data).unwrap();
+        let fna = FnaFile::from_text(raw_data).unwrap();
 
         // Then
         assert_eq!(fna.records.len(), 1);
