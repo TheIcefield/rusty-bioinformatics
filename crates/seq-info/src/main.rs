@@ -114,8 +114,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         for (island_idx, island) in islands.iter().enumerate() {
                             println!(
-                                "    Island #{island_idx}, start: {}, end: {}",
-                                island.start, island.end
+                                "    Island #{island_idx}, start: {}, end: {}, len: {}",
+                                island.start, island.end, island.seq.length()
                             );
                         }
 
@@ -136,6 +136,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             ) {
                                 eprintln!("{err}");
                             }
+                        }
+
+                        Ok(())
+                    },
+                )?;
+        }
+
+        Some(ContentSubcommand::Find(find_cmd::FindSubcommand::Orf { min_len })) => {
+            fna.records
+                .iter()
+                .enumerate()
+                .filter_map(|(record_idx, record)| {
+                    let orfs = record.content.find_orfs(*min_len);
+
+                    match orfs {
+                        Ok(orfs) => Some((record_idx, record, orfs)),
+                        Err(_) => None,
+                    }
+                })
+                .try_for_each(
+                    |(record_idx, record, orfs)| -> Result<(), Box<dyn std::error::Error>> {
+                        println!("#{record_idx}: {}.", record.header);
+
+                        for (orf_id, orf) in orfs.iter().enumerate() {
+                            println!(
+                                "    ORF #{orf_id}, start: {}, end: {}, len: {}",
+                                orf.start,
+                                orf.end,
+                                orf.seq.length()
+                            );
                         }
 
                         Ok(())
