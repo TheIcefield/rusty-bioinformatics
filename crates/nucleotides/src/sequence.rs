@@ -6,11 +6,14 @@ use crate::nucleotide::Nucleotide;
 pub struct Sequence(pub Vec<Nucleotide>);
 
 #[derive(Default, Clone)]
-pub struct CpgIsland {
+pub struct SubSequence {
     pub start: usize,
     pub end: usize,
     pub seq: Sequence,
 }
+
+pub type CpgIsland = SubSequence;
+pub type Orf = SubSequence;
 
 impl Display for Sequence {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -101,8 +104,90 @@ impl Sequence {
         Ok(transcribed)
     }
 
-    /// Find CpG islands with shifting window
-    ///
+    /// Find ORFs
+    pub fn find_orfs(&self, min_len: usize) -> Result<Vec<Orf>, Box<dyn std::error::Error>> {
+        Self::find_orfs_in_seq(&self.0, min_len)
+    }
+
+    fn find_orfs_in_seq(
+        seq: &[Nucleotide],
+        min_len: usize,
+    ) -> Result<Vec<Orf>, Box<dyn std::error::Error>> {
+        /// ATG
+        const START_CODON: [Nucleotide; 3] = [
+            Nucleotide::Adenine,
+            Nucleotide::Thymine,
+            Nucleotide::Guanine,
+        ];
+
+        // TAA, TAG, TGA
+        const STOP_CODONS: [[Nucleotide; 3]; 3] = [
+            [
+                Nucleotide::Thymine,
+                Nucleotide::Adenine,
+                Nucleotide::Adenine,
+            ],
+            [
+                Nucleotide::Thymine,
+                Nucleotide::Adenine,
+                Nucleotide::Guanine,
+            ],
+            [
+                Nucleotide::Thymine,
+                Nucleotide::Guanine,
+                Nucleotide::Adenine,
+            ],
+        ];
+
+        let mut orfs = Vec::new();
+
+        for frame_id in 0..3 {
+            // Find start-codon
+            for i in (frame_id..seq.len()).step_by(3) {
+                let Some(start_codon) = seq.get(i..(i + 3)) else {
+                    continue;
+                };
+
+                if start_codon != START_CODON {
+                    continue;
+                }
+
+                // Find stop-codon
+                for j in (i..seq.len()).step_by(3) {
+                    let Some(stop_codon) = seq.get(j..(j + 3)) else {
+                        continue;
+                    };
+
+                    if !STOP_CODONS.contains(stop_codon.try_into()?) {
+                        continue;
+                    }
+
+                    let Some(orf_candidate) = seq.get(i..(j + 3)) else {
+                        continue;
+                    };
+
+                    if orf_candidate.len() < min_len {
+                        continue;
+                    }
+
+                    let mut orf_seq = Sequence::default();
+                    orf_seq.0.extend_from_slice(orf_candidate);
+
+                    orfs.push(Orf {
+                        start: i,
+                        end: j + 3,
+                        seq: orf_seq,
+                    });
+
+                    break;
+                }
+            }
+        }
+
+        Ok(orfs)
+    }
+
+    /// Find CpG islands
     pub fn find_cpg_islands(
         &self,
         min_len: usize,
@@ -256,12 +341,12 @@ impl Sequence {
     }
 
     fn cg_pair_count(seq: &[Nucleotide]) -> usize {
-        Self::pair_count(seq, Nucleotide::Cytosine, Nucleotide::Guanine)
+        Self::pair_count(seq, [Nucleotide::Cytosine, Nucleotide::Guanine])
     }
 
-    fn pair_count(seq: &[Nucleotide], first: Nucleotide, second: Nucleotide) -> usize {
+    fn pair_count(seq: &[Nucleotide], pair: [Nucleotide; 2]) -> usize {
         seq.windows(2)
-            .filter(|w| w[0] == first && w[1] == second)
+            .filter(|w| w[0] == pair[0] && w[1] == pair[1])
             .count()
     }
 }

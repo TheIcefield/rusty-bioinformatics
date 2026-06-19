@@ -26,6 +26,11 @@ pub enum FindSubcommand {
         #[arg(long)]
         plot: Option<PathBuf>,
     },
+
+    Orf {
+        #[arg(long, default_value_t = 300)]
+        min_len: usize,
+    },
 }
 
 fn plot_gc_values(
