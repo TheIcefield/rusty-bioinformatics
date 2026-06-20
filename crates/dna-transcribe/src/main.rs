@@ -16,7 +16,7 @@ struct Cli {
     output: Option<PathBuf>,
 }
 
-fn write_seq(file: &mut File, seq: Sequence) -> Result<(), Box<dyn std::error::Error>> {
+fn write_seq(file: &mut File, seq: &Sequence) -> Result<(), Box<dyn std::error::Error>> {
     const CHUNK_SIZE: usize = 60;
 
     let mut it = seq.0.iter();
@@ -44,12 +44,9 @@ fn write_seq(file: &mut File, seq: Sequence) -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
-fn write_record(file: &mut File, record: FnaRecord) -> Result<(), Box<dyn std::error::Error>> {
+fn write_record(file: &mut File, record: &FnaRecord) -> Result<(), Box<dyn std::error::Error>> {
     writeln!(file, ">{}", record.header)?;
-
-    let transcribed = record.content.transcribe()?;
-
-    write_seq(file, transcribed)
+    write_seq(file, &record.content)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -63,13 +60,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fna = FnaFile::open(&cli.input)?;
 
     for record in fna.records {
-        write_record(
-            &mut output,
-            FnaRecord {
-                header: record.header,
-                content: record.content,
-            },
-        )?;
+        let transcribed_record = FnaRecord {
+            header: record.header,
+            content: record.content.transcribe()?,
+        };
+
+        write_record(&mut output, &transcribed_record)?;
     }
 
     Ok(())
