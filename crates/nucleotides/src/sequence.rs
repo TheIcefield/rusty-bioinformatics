@@ -12,6 +12,20 @@ pub struct SubSequence {
     pub seq: Sequence,
 }
 
+impl SubSequence {
+    pub fn new_in(seq: &[Nucleotide], start: usize, end: usize) -> Option<Self> {
+        let mut sub_seq = Sequence::default();
+
+        sub_seq.0.extend_from_slice(seq.get(start..end)?);
+
+        Some(Self {
+            start,
+            end,
+            seq: sub_seq,
+        })
+    }
+}
+
 pub type CpgIsland = SubSequence;
 pub type Orf = SubSequence;
 
@@ -104,6 +118,48 @@ impl Sequence {
         Ok(transcribed)
     }
 
+    /// Find intersections of two given sequences
+    pub fn find_subsequence_intersections(
+        &self,
+        first: &[SubSequence],
+        second: &[SubSequence],
+    ) -> Vec<(SubSequence, usize, usize)> {
+        Self::find_subsequence_intersections_in(&self.0, first, second)
+    }
+
+    fn find_subsequence_intersections_in(
+        seq: &[Nucleotide],
+        first: &[SubSequence],
+        second: &[SubSequence],
+    ) -> Vec<(SubSequence, usize, usize)> {
+        let mut intersections = Vec::new();
+
+        let mut i = 0;
+        let mut j = 0;
+
+        while i < first.len() && j < second.len() {
+            let a = &first[i];
+            let b = &second[j];
+
+            if a.start <= b.end && b.start <= a.end {
+                let start = std::cmp::max(a.start, b.start);
+                let end = std::cmp::max(a.end, b.end);
+
+                let intersection = SubSequence::new_in(seq, start, end).unwrap();
+
+                intersections.push((intersection, i, j));
+            }
+
+            if a.end < b.end {
+                i += 1;
+            } else {
+                j += 1;
+            }
+        }
+
+        intersections
+    }
+
     /// Find ORFs
     pub fn find_orfs(&self, min_len: usize) -> Result<Vec<Orf>, Box<dyn std::error::Error>> {
         Self::find_orfs_in_seq(&self.0, min_len)
@@ -141,50 +197,61 @@ impl Sequence {
 
         let mut orfs = Vec::new();
 
-        for frame_id in 0..3 {
-            // Find start-codon
-            for i in (frame_id..seq.len()).step_by(3) {
-                let Some(start_codon) = seq.get(i..(i + 3)) else {
+        for start in (0..seq.len()).step_by(3) {
+            let Some(codon) = seq.get(start..(start + 3)) else {
+                continue;
+            };
+
+            if codon != START_CODON {
+                continue;
+            }
+
+            // Find stop-codon
+            for end in ((start + 3)..seq.len()).step_by(3) {
+                let Some(codon) = seq.get(end..(end + 3)) else {
                     continue;
                 };
 
-                if start_codon != START_CODON {
+                if !STOP_CODONS.contains(codon.try_into()?) {
                     continue;
                 }
 
-                // Find stop-codon
-                for j in (i..seq.len()).step_by(3) {
-                    let Some(stop_codon) = seq.get(j..(j + 3)) else {
-                        continue;
-                    };
+                let Some(candidate) = SubSequence::new_in(seq, start, end + 3) else {
+                    continue;
+                };
 
-                    if !STOP_CODONS.contains(stop_codon.try_into()?) {
-                        continue;
-                    }
-
-                    let Some(orf_candidate) = seq.get(i..(j + 3)) else {
-                        continue;
-                    };
-
-                    if orf_candidate.len() < min_len {
-                        continue;
-                    }
-
-                    let mut orf_seq = Sequence::default();
-                    orf_seq.0.extend_from_slice(orf_candidate);
-
-                    orfs.push(Orf {
-                        start: i,
-                        end: j + 3,
-                        seq: orf_seq,
-                    });
-
+                if candidate.seq.length() >= min_len {
+                    orfs.push(candidate);
                     break;
                 }
             }
         }
 
         Ok(orfs)
+    }
+
+    pub fn best_orfs(orfs: Vec<SubSequence>) -> Vec<SubSequence> {
+        if orfs.is_empty() {
+            return orfs;
+        }
+
+        let mut merged = Vec::with_capacity(orfs.len());
+
+        let mut current = orfs[0].clone();
+        for next in orfs.iter().skip(1) {
+            // Check if two orfs intersected
+            if !(next.start >= current.start && next.end <= current.end) {
+                // store ORF and move to the next
+                merged.push(current.clone());
+                current = next.clone();
+            }
+        }
+
+        // Store last ORF
+        merged.push(current.clone());
+
+        merged.shrink_to_fit();
+        merged
     }
 
     /// Find CpG islands
@@ -259,7 +326,7 @@ impl Sequence {
             .collect()
     }
 
-    pub fn cpg_islands_metrics(
+    pub fn get_window_gc_oe_metrics(
         &self,
         window: usize,
         step: usize,
