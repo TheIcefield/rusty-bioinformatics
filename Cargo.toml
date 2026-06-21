@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["crates/seq-info", "crates/dna-transcribe"]
+members = ["crates/seq-info", "crates/dna-transcribe", "crates/orf-cpg-intersections"]

@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .content
                         .find_cpg_islands(*min_len, *min_gc, *min_oe, *step);
 
-                    let metrics = record.content.cpg_islands_metrics(*min_len, *step);
+                    let metrics = record.content.get_window_gc_oe_metrics(*min_len, *step);
 
                     (record_idx, record, islands, metrics)
                 })
@@ -112,10 +112,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     |(record_idx, record, islands, (positions, gc_values, oe_values))| -> Result<(), Box<dyn std::error::Error>> {
                         println!("#{record_idx}: {}.", record.header);
 
-                        for (island_idx, island) in islands.iter().enumerate() {
+                        for (island_id, island) in islands.iter().enumerate() {
                             println!(
-                                "    Island #{island_idx}, start: {}, end: {}, len: {}",
-                                island.start, island.end, island.seq.length()
+                                "    Island #{island_id}, start: {}, end: {}, len: {}, GC: {}%",
+                                island.start,
+                                island.end,
+                                island.seq.length(),
+                                island.seq.get_gc_content()
                             );
                         }
 
@@ -126,16 +129,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                             root.fill(&WHITE)?;
 
-                            if let Err(err) = find_cmd::plot_cpg_islands(
+                            find_cmd::plot_cpg_islands(
                                 &root,
                                 &format!("{} #{record_idx}", record.header),
                                 *min_gc,
                                 *min_oe,
                                 (&positions, &gc_values, &oe_values),
                                 &islands,
-                            ) {
-                                eprintln!("{err}");
-                            }
+                            )?;
+
+                            root.present()?;
                         }
 
                         Ok(())
@@ -161,10 +164,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         for (orf_id, orf) in orfs.iter().enumerate() {
                             println!(
-                                "    ORF #{orf_id}, start: {}, end: {}, len: {}",
+                                "    ORF #{orf_id}, start: {}, end: {}, len: {}, GC: {}%",
                                 orf.start,
                                 orf.end,
-                                orf.seq.length()
+                                orf.seq.length(),
+                                orf.seq.get_gc_content()
                             );
                         }
 
