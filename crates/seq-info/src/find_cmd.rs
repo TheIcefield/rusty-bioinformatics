@@ -1,10 +1,7 @@
 use nucleotides::sequence::CpgIsland;
 
 use clap::Subcommand;
-use plotters::{
-    coord::{Shift, types::RangedCoordf64},
-    prelude::*,
-};
+use plotters::{coord::Shift, prelude::*};
 
 use std::path::PathBuf;
 
@@ -33,84 +30,6 @@ pub enum FindSubcommand {
     },
 }
 
-fn plot_gc_values(
-    chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
-    positions: &[usize],
-    gc_values: &[f64],
-    min_gc: f64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let x_min = *positions.first().unwrap_or(&0) as f64;
-    let x_max = *positions.last().unwrap_or(&0) as f64;
-
-    chart.configure_mesh().x_labels(20).y_labels(10).draw()?;
-
-    chart
-        .draw_series(LineSeries::new(
-            positions
-                .iter()
-                .zip(gc_values.iter())
-                .map(|(&x, &y)| (x as f64, y)),
-            &BLUE,
-        ))?
-        .label("GC percentage");
-
-    chart
-        .draw_series(LineSeries::new(
-            (x_min as i32..=x_max as i32).map(|x| (x as f64, min_gc)),
-            &RED,
-        ))?
-        .label("Min GC%");
-
-    Ok(())
-}
-
-fn plot_oe_values(
-    chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
-    positions: &[usize],
-    oe_values: &[f64],
-    min_oe: f64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let x_min = *positions.first().unwrap_or(&0) as f64;
-    let x_max = *positions.last().unwrap_or(&0) as f64;
-
-    chart.configure_mesh().x_labels(20).y_labels(10).draw()?;
-
-    chart.draw_series(LineSeries::new(
-        positions
-            .iter()
-            .zip(oe_values.iter())
-            .map(|(&x, &y)| (x as f64, y)),
-        &BLUE,
-    ))?;
-
-    chart.draw_series(LineSeries::new(
-        (x_min as i32..=x_max as i32).map(|x| (x as f64, min_oe)),
-        &RED,
-    ))?;
-
-    Ok(())
-}
-
-fn mark_cpg_islands(
-    chart: &mut ChartContext<BitMapBackend, Cartesian2d<RangedCoordf64, RangedCoordf64>>,
-    islands: &[CpgIsland],
-    min: f64,
-    max: f64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    for island in islands {
-        let style = Into::<ShapeStyle>::into(&RGBColor(0, 200, 0).mix(0.2)).filled();
-        let rect = Rectangle::new(
-            [(island.start as f64, min), (island.end as f64, max)],
-            style,
-        );
-        let rect_series = vec![rect];
-
-        chart.draw_series(rect_series)?;
-    }
-
-    Ok(())
-}
-
 pub fn plot_cpg_islands(
     root: &DrawingArea<BitMapBackend, Shift>,
     title: &str,
@@ -135,7 +54,7 @@ pub fn plot_cpg_islands(
 
     let (upper, lower) = root.split_vertically(500);
 
-    let mut upper_chart = ChartBuilder::on(&upper)
+    let mut oe_chart = ChartBuilder::on(&upper)
         .caption("Observed/Expected CpG", (FONT_NAME, CAPTION_FONT_SIZE))
         .margin(10)
         .margin_top(30)
@@ -143,20 +62,19 @@ pub fn plot_cpg_islands(
         .y_label_area_size(50)
         .build_cartesian_2d(x_min..x_max, OE_MIN..OE_MAX)?;
 
-    let mut lower_chart = ChartBuilder::on(&lower)
+    let mut gc_chart = ChartBuilder::on(&lower)
         .caption("GC content (%)", (FONT_NAME, CAPTION_FONT_SIZE))
         .margin(10)
         .x_label_area_size(40)
         .y_label_area_size(50)
         .build_cartesian_2d(x_min..x_max, GC_MIN..GC_MAX)?;
 
-    plot_gc_values(&mut upper_chart, positions, oe_values, min_oe)?;
-    plot_oe_values(&mut lower_chart, positions, gc_values, min_gc)?;
+    plot_collection::plot_oe_values(&mut oe_chart, positions, oe_values, min_oe)?;
+    plot_collection::plot_gc_values(&mut gc_chart, positions, gc_values, min_gc)?;
 
-    mark_cpg_islands(&mut upper_chart, islands, OE_MIN, OE_MAX)?;
-    mark_cpg_islands(&mut lower_chart, islands, GC_MIN, GC_MAX)?;
-
-    root.present()?;
+    let style = Into::<ShapeStyle>::into(&RGBColor(0, 200, 0).mix(0.2)).filled();
+    plot_collection::mark_subsequences(&mut oe_chart, "O/E", islands, OE_MIN, OE_MAX, style)?;
+    plot_collection::mark_subsequences(&mut gc_chart, "GC", islands, GC_MIN, GC_MAX, style)?;
 
     Ok(())
 }

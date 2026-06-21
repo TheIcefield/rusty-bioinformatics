@@ -588,6 +588,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
+name = "orf-cpg-intersections"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "fna",
+ "nucleotides",
+ "plot-collection",
+ "plotters",
+]
+
+[[package]]
 name = "pathfinder_geometry"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -617,6 +628,15 @@ name = "pkg-config"
 version = "0.3.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
+
+[[package]]
+name = "plot-collection"
+version = "0.1.0"
+dependencies = [
+ "fna",
+ "nucleotides",
+ "plotters",
+]
 
 [[package]]
 name = "plotters"
@@ -743,6 +763,7 @@ dependencies = [
  "clap",
  "fna",
  "nucleotides",
+ "plot-collection",
  "plotters",
 ]
 
