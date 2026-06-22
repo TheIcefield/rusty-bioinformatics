@@ -2,11 +2,11 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Nucleotide {
-    Adenine,
-    Guanine,
-    Cytosine,
-    Thymine,
-    Uracil,
+    A, // Adenine
+    G, // Guanine
+    C, // Cytosine
+    T, // Thymine
+    U, // Uracil
 }
 
 impl Display for Nucleotide {
@@ -20,11 +20,11 @@ impl TryFrom<char> for Nucleotide {
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value.to_ascii_lowercase() {
-            'a' => Ok(Self::Adenine),
-            'g' => Ok(Self::Guanine),
-            'c' => Ok(Self::Cytosine),
-            't' => Ok(Self::Thymine),
-            'u' => Ok(Self::Uracil),
+            'a' => Ok(Self::A),
+            'g' => Ok(Self::G),
+            'c' => Ok(Self::C),
+            't' => Ok(Self::T),
+            'u' => Ok(Self::U),
             _ => Err(format!("\"{value}\" is not a nucleotide")),
         }
     }
@@ -33,11 +33,11 @@ impl TryFrom<char> for Nucleotide {
 impl Nucleotide {
     pub fn to_char(&self) -> char {
         match self {
-            Self::Adenine => 'A',
-            Self::Guanine => 'G',
-            Self::Cytosine => 'C',
-            Self::Thymine => 'T',
-            Self::Uracil => 'U',
+            Self::A => 'A',
+            Self::G => 'G',
+            Self::C => 'C',
+            Self::T => 'T',
+            Self::U => 'U',
         }
     }
 }
