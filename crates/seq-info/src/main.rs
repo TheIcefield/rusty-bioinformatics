@@ -67,16 +67,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 if *count {
-                    println!("    A: {}", record.content.count(Nucleotide::Adenine));
+                    println!("    A: {}", record.content.count(Nucleotide::A));
 
                     if record.content.is_dna() {
-                        println!("    T: {}", record.content.count(Nucleotide::Thymine));
+                        println!("    T: {}", record.content.count(Nucleotide::T));
                     } else {
-                        println!("    T: {}", record.content.count(Nucleotide::Uracil));
+                        println!("    U: {}", record.content.count(Nucleotide::U));
                     }
 
-                    println!("    G: {}", record.content.count(Nucleotide::Guanine));
-                    println!("    C: {}", record.content.count(Nucleotide::Cytosine));
+                    println!("    G: {}", record.content.count(Nucleotide::G));
+                    println!("    C: {}", record.content.count(Nucleotide::C));
                 }
 
                 if *gc {
