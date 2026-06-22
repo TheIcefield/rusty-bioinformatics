@@ -72,14 +72,22 @@ impl Sequence {
     }
 
     pub fn is_dna(&self) -> bool {
-        self.get_kind() == SequenceKind::Dna
+        Self::is_dna_seq(&self.0)
+    }
+
+    fn is_dna_seq(seq: &[Nucleotide]) -> bool {
+        Self::get_seq_kind(seq) == SequenceKind::Dna
     }
 
     pub fn get_kind(&self) -> SequenceKind {
-        if self.count(Nucleotide::Uracil) == 0 {
-            SequenceKind::Dna
-        } else {
+        Self::get_seq_kind(&self.0)
+    }
+
+    fn get_seq_kind(seq: &[Nucleotide]) -> SequenceKind {
+        if seq.contains(&Nucleotide::U) {
             SequenceKind::Rna
+        } else {
+            SequenceKind::Dna
         }
     }
 
@@ -110,8 +118,8 @@ impl Sequence {
 
         let mut transcribed = self.clone();
         transcribed.0.iter_mut().for_each(|n| {
-            if *n == Nucleotide::Thymine {
-                *n = Nucleotide::Uracil
+            if *n == Nucleotide::T {
+                *n = Nucleotide::U
             }
         });
 
@@ -169,31 +177,26 @@ impl Sequence {
         seq: &[Nucleotide],
         min_len: usize,
     ) -> Result<Vec<Orf>, Box<dyn std::error::Error>> {
-        /// ATG
-        const START_CODON: [Nucleotide; 3] = [
-            Nucleotide::Adenine,
-            Nucleotide::Thymine,
-            Nucleotide::Guanine,
+        const DNA_START_CODON: [Nucleotide; 3] = [Nucleotide::A, Nucleotide::T, Nucleotide::G];
+        const RNA_START_CODON: [Nucleotide; 3] = [Nucleotide::A, Nucleotide::U, Nucleotide::G];
+
+        const DNA_STOP_CODONS: [[Nucleotide; 3]; 3] = [
+            [Nucleotide::T, Nucleotide::A, Nucleotide::A],
+            [Nucleotide::T, Nucleotide::A, Nucleotide::G],
+            [Nucleotide::T, Nucleotide::G, Nucleotide::A],
         ];
 
-        // TAA, TAG, TGA
-        const STOP_CODONS: [[Nucleotide; 3]; 3] = [
-            [
-                Nucleotide::Thymine,
-                Nucleotide::Adenine,
-                Nucleotide::Adenine,
-            ],
-            [
-                Nucleotide::Thymine,
-                Nucleotide::Adenine,
-                Nucleotide::Guanine,
-            ],
-            [
-                Nucleotide::Thymine,
-                Nucleotide::Guanine,
-                Nucleotide::Adenine,
-            ],
+        const RNA_STOP_CODONS: [[Nucleotide; 3]; 3] = [
+            [Nucleotide::U, Nucleotide::A, Nucleotide::A],
+            [Nucleotide::U, Nucleotide::A, Nucleotide::G],
+            [Nucleotide::U, Nucleotide::G, Nucleotide::A],
         ];
+
+        let (start_codon, stop_codons) = if Self::is_dna_seq(seq) {
+            (DNA_START_CODON, DNA_STOP_CODONS)
+        } else {
+            (RNA_START_CODON, RNA_STOP_CODONS)
+        };
 
         let mut orfs = Vec::new();
 
@@ -202,7 +205,7 @@ impl Sequence {
                 continue;
             };
 
-            if codon != START_CODON {
+            if codon != start_codon {
                 continue;
             }
 
@@ -212,7 +215,7 @@ impl Sequence {
                     continue;
                 };
 
-                if !STOP_CODONS.contains(codon.try_into()?) {
+                if !stop_codons.contains(codon.try_into()?) {
                     continue;
                 }
 
@@ -355,8 +358,8 @@ impl Sequence {
     fn observed_expected_cpg(seq: &[Nucleotide]) -> f64 {
         let observed_gc_count = Self::cg_pair_count(seq);
 
-        let c_count = Self::nucleotide_count(seq, Nucleotide::Cytosine);
-        let g_count = Self::nucleotide_count(seq, Nucleotide::Guanine);
+        let c_count = Self::nucleotide_count(seq, Nucleotide::C);
+        let g_count = Self::nucleotide_count(seq, Nucleotide::G);
         let length = seq.len();
 
         if c_count == 0 || g_count == 0 || length == 0 {
@@ -397,7 +400,7 @@ impl Sequence {
     fn gc_percent(seq: &[Nucleotide]) -> f64 {
         let gc = seq
             .iter()
-            .filter(|n| matches!(n, Nucleotide::Guanine | Nucleotide::Cytosine)) // yeild only G and C
+            .filter(|n| matches!(n, Nucleotide::G | Nucleotide::C)) // yeild only G and C
             .count();
 
         (gc as f64) / (seq.len() as f64) * 100.0
@@ -408,7 +411,7 @@ impl Sequence {
     }
 
     fn cg_pair_count(seq: &[Nucleotide]) -> usize {
-        Self::pair_count(seq, [Nucleotide::Cytosine, Nucleotide::Guanine])
+        Self::pair_count(seq, [Nucleotide::C, Nucleotide::G])
     }
 
     fn pair_count(seq: &[Nucleotide], pair: [Nucleotide; 2]) -> usize {
