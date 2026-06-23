@@ -278,6 +278,17 @@ impl Sequence {
         merged
     }
 
+    pub fn find_motifs(&self, motif: &[Nucleotide]) -> Vec<usize> {
+        Self::find_motifs_in_seq(&self.0, motif)
+    }
+
+    fn find_motifs_in_seq(seq: &[Nucleotide], motif: &[Nucleotide]) -> Vec<usize> {
+        seq.windows(motif.len())
+            .enumerate()
+            .filter_map(|(pos, sub_seq)| if sub_seq == motif { Some(pos) } else { None })
+            .collect()
+    }
+
     /// Find CpG islands
     pub fn find_cpg_islands(
         &self,
@@ -492,5 +503,22 @@ mod tests {
         assert_eq!(islands.len(), 1);
         assert_eq!(islands[0].start, 25);
         assert_eq!(islands[0].end, 535);
+    }
+
+    #[test]
+    fn find_motif_test() {
+        // Given
+        const RAW_DATA: &str = "GATATATGCATATACTT";
+        const MOTIF_STR: &str = "ATAT";
+
+        let seq = Sequence::from_str(RAW_DATA).unwrap();
+        let motif = Sequence::from_str(MOTIF_STR).unwrap();
+
+        // When
+        let positions = seq.find_motifs(&motif.0);
+        assert_eq!(positions.len(), 3);
+        assert_eq!(positions[0], 1);
+        assert_eq!(positions[1], 3);
+        assert_eq!(positions[2], 9);
     }
 }

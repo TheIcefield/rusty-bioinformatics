@@ -1,10 +1,10 @@
 use fna::FnaFile;
-use nucleotides::nucleotide::Nucleotide;
+use nucleotides::{nucleotide::Nucleotide, sequence::Sequence};
 
 use clap::{Parser, Subcommand};
 use plotters::{backend::BitMapBackend, prelude::*, style::full_palette::WHITE};
 
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 pub mod find_cmd;
 
@@ -175,6 +175,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Ok(())
                     },
                 )?;
+        }
+
+        Some(ContentSubcommand::Find(find_cmd::FindSubcommand::Motif { sub_str })) => {
+            fna.records.iter().enumerate().try_for_each(
+                |(record_id, record)| -> Result<(), Box<dyn std::error::Error>> {
+                    println!("#{record_id}: {}.", record.header);
+
+                    let motif = Sequence::from_str(sub_str)?;
+
+                    record
+                        .content
+                        .find_motifs(&motif.0)
+                        .into_iter()
+                        .for_each(|pos| print!("{pos} "));
+
+                    println!();
+
+                    Ok(())
+                },
+            )?;
         }
 
         None => eprintln!("Subcommand not provided!"),
