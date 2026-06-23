@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::nucleotide::Nucleotide;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +31,38 @@ pub struct CodonSequence(pub Vec<Codon>);
 
 pub struct ProteinString(pub CodonSequence);
 
+impl Display for Codon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::F => "F",
+                Self::L => "L",
+                Self::S => "S",
+                Self::Y => "Y",
+                Self::C => "C",
+                Self::W => "W",
+                Self::I => "I",
+                Self::M => "M",
+                Self::T => "T",
+                Self::P => "P",
+                Self::H => "H",
+                Self::Q => "Q",
+                Self::R => "R",
+                Self::N => "N",
+                Self::K => "K",
+                Self::V => "V",
+                Self::A => "A",
+                Self::D => "D",
+                Self::E => "E",
+                Self::G => "G",
+                Self::Stop => "Stop",
+            }
+        )
+    }
+}
+
 impl Codon {
     pub fn try_from_triplet(triplet: [Nucleotide; 3]) -> Option<Self> {
         for (entry_triplet, entry_codon) in RNA_CODON_TABLE.iter() {
@@ -38,33 +72,6 @@ impl Codon {
         }
 
         None
-    }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::F => "F",
-            Self::L => "L",
-            Self::S => "S",
-            Self::Y => "Y",
-            Self::C => "C",
-            Self::W => "W",
-            Self::I => "I",
-            Self::M => "M",
-            Self::T => "T",
-            Self::P => "P",
-            Self::H => "H",
-            Self::Q => "Q",
-            Self::R => "R",
-            Self::N => "N",
-            Self::K => "K",
-            Self::V => "V",
-            Self::A => "A",
-            Self::D => "D",
-            Self::E => "E",
-            Self::G => "G",
-            Self::Stop => "Stop",
-        }
-        .to_string()
     }
 }
 
@@ -102,7 +109,7 @@ impl From<CodonSequence> for ProteinString {
         Self(CodonSequence(
             seq.0
                 .into_iter()
-                .filter_map(|c| if c != Codon::Stop { Some(c) } else { None })
+                .filter(|c| *c != Codon::Stop)
                 .collect::<Vec<Codon>>(),
         ))
     }
