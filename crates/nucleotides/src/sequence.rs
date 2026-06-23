@@ -147,6 +147,38 @@ impl Sequence {
         Ok(translated)
     }
 
+    pub fn get_hamming_distance(&self, other: &Self) -> Result<usize, String> {
+        Self::get_hamming_distance_in_seq(&self.0, &other.0)
+    }
+
+    fn get_hamming_distance_in_seq(
+        first: &[Nucleotide],
+        second: &[Nucleotide],
+    ) -> Result<usize, String> {
+        let first_kind = Self::get_seq_kind(first);
+        let second_kind = Self::get_seq_kind(second);
+
+        if first_kind != second_kind {
+            return Err(format!(
+                "Wrong comparison. Sequence kind should be same, actually: {first_kind} and {second_kind}"
+            ));
+        }
+
+        if first.len() != second.len() {
+            return Err(format!(
+                "Wrong comparison. Sequence length should be equal, actually: {} and {}",
+                first.len(),
+                second.len()
+            ));
+        }
+
+        Ok(first
+            .iter()
+            .zip(second.iter())
+            .filter(|(a, b)| **a != **b)
+            .count())
+    }
+
     /// Find intersections of two given sequences
     pub fn find_subsequence_intersections(
         &self,
@@ -520,5 +552,23 @@ mod tests {
         assert_eq!(positions[0], 1);
         assert_eq!(positions[1], 3);
         assert_eq!(positions[2], 9);
+    }
+
+    #[test]
+    fn get_hamming_distance_test() {
+        // Given
+        const FIRST: &str = "GAGCCTACTAACGGGAT";
+        const SECOND: &str = "CATCGTAATGACGGCCT";
+
+        let first = Sequence::from_str(FIRST).unwrap();
+        let second = Sequence::from_str(SECOND).unwrap();
+
+        // When
+        let res = first.get_hamming_distance(&second).unwrap();
+
+        // Then
+        const EXPECTED: usize = 7;
+
+        assert_eq!(res, EXPECTED);
     }
 }

@@ -6,6 +6,7 @@ use plotters::{backend::BitMapBackend, prelude::*, style::full_palette::WHITE};
 
 use std::{path::PathBuf, str::FromStr};
 
+pub mod cmp_cmd;
 pub mod find_cmd;
 
 #[derive(Parser, Debug)]
@@ -38,6 +39,9 @@ enum ContentSubcommand {
         #[arg(long)]
         gc: bool,
     },
+
+    #[command(subcommand)]
+    Compare(cmp_cmd::CompareSubcommand),
 
     #[command(subcommand)]
     Find(find_cmd::FindSubcommand),
@@ -83,6 +87,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("    GC content: {}%", record.content.get_gc_content());
                 }
             }
+        }
+
+        Some(ContentSubcommand::Compare(cmp_cmd::CompareSubcommand::HammingDistance {
+            second,
+        })) => {
+            let second_fna = FnaFile::open(second)?;
+
+            if fna.records.len() != second_fna.records.len() {
+                return Err(format!(
+                    "Records count is different: {} and {}",
+                    fna.records.len(),
+                    second_fna.records.len()
+                )
+                .into());
+            }
+
+            fna.records
+                .iter()
+                .zip(second_fna.records.iter())
+                .enumerate()
+                .try_for_each(
+                    |(record_id, (first, second))| -> Result<(), Box<dyn std::error::Error>> {
+                        println!(
+                            "Compare record #{record_id}\n    {}\nVS\n    {}",
+                            first.header, second.header
+                        );
+
+                        let distance = first.content.get_hamming_distance(&second.content)?;
+
+                        println!("Hamming distance: {distance}");
+
+                        Ok(())
+                    },
+                )?;
         }
 
         Some(ContentSubcommand::Find(find_cmd::FindSubcommand::CpgIslands {
