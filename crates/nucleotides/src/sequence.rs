@@ -1,6 +1,9 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::nucleotide::Nucleotide;
+use crate::{
+    codons::{CodonSequence, ProteinString},
+    nucleotide::Nucleotide,
+};
 
 #[derive(Default, Clone)]
 pub struct Sequence(pub Vec<Nucleotide>);
@@ -75,6 +78,10 @@ impl Sequence {
         Self::is_dna_seq(&self.0)
     }
 
+    pub fn is_rna(&self) -> bool {
+        !self.is_dna()
+    }
+
     fn is_dna_seq(seq: &[Nucleotide]) -> bool {
         Self::get_seq_kind(seq) == SequenceKind::Dna
     }
@@ -124,6 +131,20 @@ impl Sequence {
         });
 
         Ok(transcribed)
+    }
+
+    /// Applicable to: RNA sequence kind
+    pub fn translate(&self) -> Result<ProteinString, String> {
+        if !self.is_rna() {
+            return Err(format!(
+                "Only DNA can be transcribed. Sequence kind is {}",
+                self.get_kind()
+            ));
+        }
+
+        let translated = ProteinString::from(CodonSequence::from(self.0.as_ref()));
+
+        Ok(translated)
     }
 
     /// Find intersections of two given sequences
