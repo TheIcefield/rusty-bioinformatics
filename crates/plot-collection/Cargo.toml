@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-plotters = "0.3.3"
+plotters = { workspace = true }
 fna = { path = "../fna" }
 nucleotides = { path = "../nucleotides" }

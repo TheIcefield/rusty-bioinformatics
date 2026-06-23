@@ -727,6 +727,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rna-translate"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "fna",
+ "nucleotides",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
