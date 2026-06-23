@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.6.1", features = ["derive"] }
+clap = { workspace = true }
+plotters = { workspace = true }
 fna = { path = "../fna" }
 nucleotides = { path = "../nucleotides" }
 plot-collection = { path = "../plot-collection" }
-plotters = "0.3.3"
