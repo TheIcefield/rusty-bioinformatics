@@ -28,6 +28,11 @@ pub enum FindSubcommand {
         #[arg(long, default_value_t = 300)]
         min_len: usize,
     },
+
+    Motif {
+        #[arg(long)]
+        sub_str: String,
+    },
 }
 
 pub fn plot_cpg_islands(
