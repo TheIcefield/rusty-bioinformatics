@@ -189,11 +189,7 @@ impl Sequence {
         let mut new_seq = Vec::from(seq);
 
         for intron in introns {
-            let old_len = seq.len();
             new_seq = Self::splice_in_seq_one(&new_seq, intron);
-            let new_len = seq.len();
-
-            println!("{old_len} vs {new_len}");
         }
 
         new_seq
