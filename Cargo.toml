@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/seq-info", "crates/dna-transcribe", "crates/rna-translate", "crates/orf-cpg-intersections"]
+members = ["crates/seq-info", "crates/dna-transcribe", "crates/rna-translate", "crates/dna-splice", "crates/orf-cpg-intersections"]
 
 [workspace.dependencies]
 clap = { version = "4.6.1", features = ["derive"] }

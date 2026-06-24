@@ -276,6 +276,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dna-splice"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "fna",
+ "nucleotides",
+]
+
+[[package]]
 name = "dna-transcribe"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,9 @@
+[package]
+name = "dna-splice"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { workspace = true }
+fna = { path = "../fna" }
+nucleotides = { path = "../nucleotides" }
