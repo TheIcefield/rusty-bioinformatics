@@ -179,6 +179,40 @@ impl Sequence {
             .count())
     }
 
+    pub fn splice(&self, introns: &[Sequence]) -> Self {
+        let introns = introns.iter().map(|a| a.0.as_ref()).collect::<Vec<_>>();
+
+        Self(Self::splice_seq(&self.0, &introns))
+    }
+
+    fn splice_seq(seq: &[Nucleotide], introns: &[&[Nucleotide]]) -> Vec<Nucleotide> {
+        let mut new_seq = Vec::from(seq);
+
+        for intron in introns {
+            let old_len = seq.len();
+            new_seq = Self::splice_in_seq_one(&new_seq, intron);
+            let new_len = seq.len();
+
+            println!("{old_len} vs {new_len}");
+        }
+
+        new_seq
+    }
+
+    fn splice_in_seq_one(seq: &[Nucleotide], intron: &[Nucleotide]) -> Vec<Nucleotide> {
+        let mut seq = Vec::from(seq);
+
+        if let Some(idx) = seq
+            .windows(intron.len())
+            .position(|window| window == intron)
+        {
+            // Удаляем найденную подпоследовательность
+            seq.drain(idx..idx + intron.len());
+        }
+
+        seq
+    }
+
     /// Find intersections of two given sequences
     pub fn find_subsequence_intersections(
         &self,
@@ -570,5 +604,29 @@ mod tests {
         const EXPECTED: usize = 7;
 
         assert_eq!(res, EXPECTED);
+    }
+
+    #[test]
+    fn splice_test() {
+        // Given
+        const RAW_DATA: &str = "ATGGTCTACATAGCTGACAAACAGCACGTAGCAATCGGTCGAATCTCGAGAGGCATATGGTCACATGATCGGTCGAGCGTGTTTCAAAGTTTGCGCCTAG";
+        const INTRON_1: &str = "ATCGGTCGAA";
+        const INTRON_2: &str = "ATCGGTCGAGCGTGT";
+
+        let seq = Sequence::from_str(RAW_DATA).unwrap();
+        let introns = vec![
+            Sequence::from_str(INTRON_1).unwrap(),
+            Sequence::from_str(INTRON_2).unwrap(),
+        ];
+
+        // When
+        let spliced = seq.splice(&introns);
+        let transribed = spliced.transcribe().unwrap();
+        let translated = transribed.translate().unwrap();
+
+        // Then
+        const EXPECTED: &str = "MVYIADKQHVASREAYGHMFKVCA";
+        assert_eq!(translated.0.0.len(), 24);
+        assert_eq!(CodonSequence::to_string(&translated.0.0), EXPECTED);
     }
 }
