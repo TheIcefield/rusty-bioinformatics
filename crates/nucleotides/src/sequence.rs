@@ -1,9 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::{
-    codons::{CodonSequence, ProteinString},
-    nucleotide::Nucleotide,
-};
+use crate::{codons::CodonSequence, nucleotide::Nucleotide};
 
 #[derive(Default, Clone)]
 pub struct Sequence(pub Vec<Nucleotide>);
@@ -134,7 +131,7 @@ impl Sequence {
     }
 
     /// Applicable to: RNA sequence kind
-    pub fn translate(&self) -> Result<ProteinString, String> {
+    pub fn translate(&self) -> Result<CodonSequence, String> {
         if !self.is_rna() {
             return Err(format!(
                 "Only DNA can be transcribed. Sequence kind is {}",
@@ -142,7 +139,7 @@ impl Sequence {
             ));
         }
 
-        let translated = ProteinString::from(CodonSequence::from(self.0.as_ref()));
+        let translated = CodonSequence::from(self.0.as_ref());
 
         Ok(translated)
     }
@@ -622,7 +619,7 @@ mod tests {
 
         // Then
         const EXPECTED: &str = "MVYIADKQHVASREAYGHMFKVCA";
-        assert_eq!(translated.0.0.len(), 24);
-        assert_eq!(CodonSequence::to_string(&translated.0.0), EXPECTED);
+        assert_eq!(translated.0.len(), 24);
+        assert_eq!(CodonSequence::to_string(&translated.0), EXPECTED);
     }
 }

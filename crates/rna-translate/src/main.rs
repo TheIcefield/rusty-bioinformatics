@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (record_id, record) in fna.records.iter().enumerate() {
         match record.content.translate() {
-            Ok(translated) => write_record(&mut output, &record.header, &translated.0.0)?,
+            Ok(translated) => write_record(&mut output, &record.header, &translated.0)?,
             Err(err) => eprintln!("#{record_id}: {err}"),
         }
     }

@@ -1,29 +1,29 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use crate::nucleotide::Nucleotide;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Codon {
-    F,
-    L,
-    S,
-    Y,
-    C,
-    W,
-    I,
-    M,
-    T,
-    P,
-    H,
-    Q,
-    R,
-    N,
-    K,
-    V,
     A,
+    C,
     D,
     E,
+    F,
     G,
+    H,
+    I,
+    K,
+    L,
+    M,
+    N,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    V,
+    W,
+    Y,
     Stop,
 }
 
@@ -63,6 +63,36 @@ impl Display for Codon {
     }
 }
 
+impl TryFrom<char> for Codon {
+    type Error = String;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value.to_ascii_lowercase() {
+            'a' => Ok(Self::A),
+            'c' => Ok(Self::C),
+            'd' => Ok(Self::D),
+            'e' => Ok(Self::E),
+            'f' => Ok(Self::F),
+            'g' => Ok(Self::G),
+            'h' => Ok(Self::H),
+            'i' => Ok(Self::I),
+            'k' => Ok(Self::K),
+            'l' => Ok(Self::L),
+            'm' => Ok(Self::M),
+            'n' => Ok(Self::N),
+            'p' => Ok(Self::P),
+            'q' => Ok(Self::Q),
+            'r' => Ok(Self::R),
+            's' => Ok(Self::S),
+            't' => Ok(Self::T),
+            'v' => Ok(Self::V),
+            'w' => Ok(Self::W),
+            'y' => Ok(Self::Y),
+            _ => Err(format!("\"{value}\" is not a codon")),
+        }
+    }
+}
+
 impl Codon {
     pub fn try_from_triplet(triplet: [Nucleotide; 3]) -> Option<Self> {
         for (entry_triplet, entry_codon) in RNA_CODON_TABLE.iter() {
@@ -72,6 +102,26 @@ impl Codon {
         }
 
         None
+    }
+
+    pub fn get_monoisotopic_mass(&self) -> Option<f64> {
+        CODON_MONOISOTOPIC_MASS_TABLE
+            .iter()
+            .find(|cand| cand.0 == *self)
+            .map(|cand| cand.1)
+    }
+}
+
+impl FromStr for CodonSequence {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut codons = Vec::<Codon>::with_capacity(s.len());
+        for ch in s.chars() {
+            codons.push(Codon::try_from(ch)?);
+        }
+
+        Ok(Self(codons))
     }
 }
 
@@ -91,6 +141,10 @@ impl From<&[Nucleotide]> for CodonSequence {
                 continue;
             };
 
+            if codon == Codon::Stop {
+                continue;
+            }
+
             codons.push(codon);
         }
 
@@ -102,16 +156,13 @@ impl CodonSequence {
     pub fn to_string(seq: &[Codon]) -> String {
         seq.iter().map(|c| c.to_string()).collect()
     }
-}
 
-impl From<CodonSequence> for ProteinString {
-    fn from(seq: CodonSequence) -> Self {
-        Self(CodonSequence(
-            seq.0
-                .into_iter()
-                .filter(|c| *c != Codon::Stop)
-                .collect::<Vec<Codon>>(),
-        ))
+    pub fn get_monoisotopic_mass(&self) -> f64 {
+        Self::get_monoisotopic_mass_of_seq(&self.0)
+    }
+
+    fn get_monoisotopic_mass_of_seq(seq: &[Codon]) -> f64 {
+        seq.iter().filter_map(|c| c.get_monoisotopic_mass()).sum()
     }
 }
 
@@ -186,6 +237,29 @@ const RNA_CODON_TABLE: [([Nucleotide; 3], Codon); 16 * 4] = [
     ([Nucleotide::G, Nucleotide::G, Nucleotide::G], Codon::G),
 ];
 
+const CODON_MONOISOTOPIC_MASS_TABLE: [(Codon, f64); 20] = [
+    (Codon::A, 71.03711),
+    (Codon::C, 103.00919),
+    (Codon::D, 115.02694),
+    (Codon::E, 129.04259),
+    (Codon::F, 147.06841),
+    (Codon::G, 57.02146),
+    (Codon::H, 137.05891),
+    (Codon::I, 113.08406),
+    (Codon::K, 128.09496),
+    (Codon::L, 113.08406),
+    (Codon::M, 131.04049),
+    (Codon::N, 114.04293),
+    (Codon::P, 97.05276),
+    (Codon::Q, 128.05858),
+    (Codon::R, 156.10111),
+    (Codon::S, 87.03203),
+    (Codon::T, 101.04768),
+    (Codon::V, 99.06841),
+    (Codon::W, 186.07931),
+    (Codon::Y, 163.06333),
+];
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -205,6 +279,19 @@ mod tests {
 
         // Then
         const EXPECTED: &str = "MAMAPRTEINSTRING";
-        assert_eq!(CodonSequence::to_string(&translated.0.0), EXPECTED);
+        assert_eq!(CodonSequence::to_string(&translated.0), EXPECTED);
+    }
+
+    #[test]
+    fn monoisotopic_mass_test() {
+        // Given
+        const RAW_DATA: &str = "SKADYEK";
+
+        // When
+        let seq = CodonSequence::from_str(RAW_DATA).unwrap();
+        let mass = seq.get_monoisotopic_mass();
+
+        // Then
+        assert_eq!(mass.round(), 821.0);
     }
 }

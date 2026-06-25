@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let transcribed = spliced.transcribe()?;
     let translated = transcribed.translate()?;
 
-    write_record(&mut output, &initial_seq.header, &translated.0.0)?;
+    write_record(&mut output, &initial_seq.header, &translated.0)?;
 
     Ok(())
 }
