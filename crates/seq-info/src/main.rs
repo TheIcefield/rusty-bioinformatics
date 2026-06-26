@@ -6,7 +6,6 @@ use plotters::{backend::BitMapBackend, prelude::*, style::full_palette::WHITE};
 
 use std::{path::PathBuf, str::FromStr};
 
-pub mod cmp_cmd;
 pub mod find_cmd;
 
 #[derive(Parser, Debug)]
@@ -40,8 +39,19 @@ enum ContentSubcommand {
         gc: bool,
     },
 
-    #[command(subcommand)]
-    Compare(cmp_cmd::CompareSubcommand),
+    Compare {
+        #[arg(long)]
+        second: PathBuf,
+
+        #[arg(long)]
+        hamming_distance: bool,
+
+        #[arg(long)]
+        transitions: bool,
+
+        #[arg(long)]
+        transversions: bool,
+    },
 
     #[command(subcommand)]
     Find(find_cmd::FindSubcommand),
@@ -89,9 +99,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        Some(ContentSubcommand::Compare(cmp_cmd::CompareSubcommand::HammingDistance {
+        Some(ContentSubcommand::Compare {
             second,
-        })) => {
+            hamming_distance,
+            transitions,
+            transversions,
+        }) => {
             let second_fna = FnaFile::open(second)?;
 
             if fna.records.len() != second_fna.records.len() {
@@ -110,13 +123,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .try_for_each(
                     |(record_id, (first, second))| -> Result<(), Box<dyn std::error::Error>> {
                         println!(
-                            "Compare record #{record_id}\n    {}\nVS\n    {}",
+                            "Compare record #{record_id}\n    {}\nVS\n    {}\n",
                             first.header, second.header
                         );
 
-                        let distance = first.content.get_hamming_distance(&second.content)?;
+                        if *hamming_distance {
+                            let distance = first.content.get_hamming_distance(&second.content)?;
 
-                        println!("Hamming distance: {distance}");
+                            println!("Hamming distance: {distance}");
+                        }
+
+                        let transitions_count = if *transitions {
+                            let transitions = first.content.get_transitions(&second.content)?;
+                            println!("Transitions: {transitions}");
+                            transitions
+                        } else {
+                            0
+                        };
+
+                        let transversions_count = if *transversions {
+                            let transversions = first.content.get_transversions(&second.content)?;
+                            println!("Transversions: {transversions}");
+                            transversions
+                        } else {
+                            0
+                        };
+
+                        if *transitions && *transversions && transversions_count != 0 {
+                            let ratio = transitions_count as f64 / transversions_count as f64;
+                            println!("Transitions/Transversions ratio: {ratio}");
+                        }
 
                         Ok(())
                     },
