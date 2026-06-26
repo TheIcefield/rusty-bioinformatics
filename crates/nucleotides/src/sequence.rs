@@ -144,6 +144,31 @@ impl Sequence {
         Ok(translated)
     }
 
+    /// Reverses sequence and complement it's nucleotides.
+    /// A and T complement each other,
+    /// G and C complement each other.
+    pub fn get_reverse_complement(&self) -> Result<Self, String> {
+        let kind = self.get_kind();
+        if kind != SequenceKind::Dna {
+            return Err(format!("Sequence kind should be DNA, actually is: {kind}"));
+        }
+
+        Ok(Sequence(
+            self.0
+                .iter()
+                .rev() // reverse DNA strand
+                .map(|a| match a {
+                    // Complement nucleotides
+                    Nucleotide::G => Nucleotide::C,
+                    Nucleotide::C => Nucleotide::G,
+                    Nucleotide::A => Nucleotide::T,
+                    Nucleotide::T => Nucleotide::A,
+                    Nucleotide::U => unreachable!("Uracil cannot be complemented in DNA strand"),
+                })
+                .collect(),
+        ))
+    }
+
     pub fn get_hamming_distance(&self, other: &Self) -> Result<usize, String> {
         Self::get_hamming_distance_in_seq(&self.0, &other.0)
     }
@@ -738,5 +763,19 @@ mod tests {
             (transition_transversion_ratio - EXPECTED).abs() < EPSILON,
             "Result: {transition_transversion_ratio}, Expected: {EXPECTED}, Epsilon: {EPSILON}"
         );
+    }
+
+    #[test]
+    fn reverse_complement_test() {
+        // Given
+        let raw_data = "AAAACCCGGT";
+
+        // When
+        let dna = Sequence::from_str(raw_data).unwrap();
+        let revc = dna.get_reverse_complement().unwrap();
+
+        // Then
+        const EXPECTED: &str = "ACCGGGTTTT";
+        assert_eq!(revc.to_string(), EXPECTED);
     }
 }
