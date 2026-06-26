@@ -206,6 +206,98 @@ impl Sequence {
         seq
     }
 
+    pub fn get_transitions_transversion_ratio(&self, other: &Self) -> Result<f64, String> {
+        let transitions = self.get_transitions(other)?;
+        let transversions = self.get_transversions(other)?;
+
+        if transversions == 0 {
+            return Err("Zero devision error".to_string());
+        }
+
+        Ok(transitions as f64 / transversions as f64)
+    }
+
+    pub fn get_transitions(&self, other: &Self) -> Result<usize, String> {
+        Self::get_transitions_seq(&self.0, &other.0)
+    }
+
+    fn get_transitions_seq(first: &[Nucleotide], second: &[Nucleotide]) -> Result<usize, String> {
+        let first_kind = Self::get_seq_kind(first);
+        let second_kind = Self::get_seq_kind(second);
+
+        if first_kind != SequenceKind::Dna {
+            return Err(format!(
+                "Wrong comparison. Sequence kind should be DNA, first is actually: {first_kind}"
+            ));
+        }
+
+        if second_kind != SequenceKind::Dna {
+            return Err(format!(
+                "Wrong comparison. Sequence kind should be DNA, second is actually: {second_kind}"
+            ));
+        }
+
+        if first.len() != second.len() {
+            return Err(format!(
+                "Wrong comparison. Sequence length should be equal, actually: {} and {}",
+                first.len(),
+                second.len()
+            ));
+        }
+
+        Ok(first
+            .iter()
+            .zip(second.iter())
+            .filter(|(first, second)| {
+                (**first == Nucleotide::A && **second == Nucleotide::G)
+                    || (**first == Nucleotide::G && **second == Nucleotide::A)
+                    || (**first == Nucleotide::C && **second == Nucleotide::T)
+                    || (**first == Nucleotide::T && **second == Nucleotide::C)
+            })
+            .count())
+    }
+
+    pub fn get_transversions(&self, other: &Self) -> Result<usize, String> {
+        Self::get_transversions_seq(&self.0, &other.0)
+    }
+
+    fn get_transversions_seq(first: &[Nucleotide], second: &[Nucleotide]) -> Result<usize, String> {
+        let first_kind = Self::get_seq_kind(first);
+        let second_kind = Self::get_seq_kind(second);
+
+        if first_kind != SequenceKind::Dna {
+            return Err(format!(
+                "Wrong comparison. Sequence kind should be DNA, first is actually: {first_kind}"
+            ));
+        }
+
+        if second_kind != SequenceKind::Dna {
+            return Err(format!(
+                "Wrong comparison. Sequence kind should be DNA, second is actually: {second_kind}"
+            ));
+        }
+
+        if first.len() != second.len() {
+            return Err(format!(
+                "Wrong comparison. Sequence length should be equal, actually: {} and {}",
+                first.len(),
+                second.len()
+            ));
+        }
+
+        Ok(first
+            .iter()
+            .zip(second.iter())
+            .filter(|(first, second)| {
+                **first != **second
+                    && !((**first == Nucleotide::A && **second == Nucleotide::G)
+                        || (**first == Nucleotide::G && **second == Nucleotide::A)
+                        || (**first == Nucleotide::C && **second == Nucleotide::T)
+                        || (**first == Nucleotide::T && **second == Nucleotide::C))
+            })
+            .count())
+    }
+
     /// Find intersections of two given sequences
     pub fn find_subsequence_intersections(
         &self,
@@ -621,5 +713,30 @@ mod tests {
         const EXPECTED: &str = "MVYIADKQHVASREAYGHMFKVCA";
         assert_eq!(translated.0.len(), 24);
         assert_eq!(CodonSequence::to_string(&translated.0), EXPECTED);
+    }
+
+    #[test]
+    fn transitions_transversions_test() {
+        // Given
+        const FIRST: &str =
+            "GCAACGCACAACGAAAACCCTTAGGGACTGGATTATTTCGTGATCGTTGTAGTTATTGGAAGTACGGGCATCAACCCAGTT";
+        const SECOND: &str =
+            "TTATCTGACAAAGAAAGCCGTCAACGGCTGGATAATTTCGCGATCGTGCTGGTTACTGGCGGTACGAGTGTTCCTTTGGGT";
+
+        let first = Sequence::from_str(FIRST).unwrap();
+        let second = Sequence::from_str(SECOND).unwrap();
+
+        // When
+        let transition_transversion_ratio =
+            first.get_transitions_transversion_ratio(&second).unwrap();
+
+        // Then
+        const EXPECTED: f64 = 1.21428571429;
+        const EPSILON: f64 = 1.0e-5;
+
+        assert!(
+            (transition_transversion_ratio - EXPECTED).abs() < EPSILON,
+            "Result: {transition_transversion_ratio}, Expected: {EXPECTED}, Epsilon: {EPSILON}"
+        );
     }
 }
