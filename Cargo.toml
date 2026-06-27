@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["crates/seq-info", "crates/dna-transcribe", "crates/rna-translate", "crates/dna-splice", "crates/orf-cpg-intersections"]
+members = ["crates/fna-kit", "crates/seq-info", "crates/dna-transcribe", "crates/rna-translate", "crates/dna-splice", "crates/orf-cpg-intersections"]
 
 [workspace.dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
 plotters = "0.3.3"
+peg = "0.8.6"
