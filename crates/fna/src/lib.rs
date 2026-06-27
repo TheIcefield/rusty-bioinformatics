@@ -1,4 +1,4 @@
-use std::{io::Read, path::Path, str::FromStr};
+use std::{fmt::Display, io::Read, path::Path, str::FromStr};
 
 use nucleotides::sequence::Sequence;
 
@@ -10,6 +10,15 @@ pub struct FnaRecord {
 
 pub struct FnaFile {
     pub records: Vec<FnaRecord>,
+}
+
+impl Display for FnaRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, ">{}", self.header)?;
+        writeln!(f, "{}", self.content)?;
+
+        Ok(())
+    }
 }
 
 impl FnaFile {

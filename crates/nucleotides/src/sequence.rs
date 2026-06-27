@@ -31,9 +31,30 @@ pub type Orf = SubSequence;
 
 impl Display for Sequence {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for n in &self.0 {
-            write!(f, "{n}")?;
+        const CHUNK_SIZE: usize = 60;
+
+        let mut it = self.0.iter();
+        let mut cur_pos = 0usize;
+
+        while cur_pos < self.length() {
+            let start = cur_pos;
+            let mut count = 0;
+
+            while count < CHUNK_SIZE {
+                let Some(_) = it.next() else {
+                    break;
+                };
+
+                count += 1;
+                cur_pos += 1;
+            }
+
+            let sub_seq = &self.0[start..cur_pos];
+            let sub_str = Sequence::to_string(sub_seq);
+
+            writeln!(f, "{sub_str}")?;
         }
+
         Ok(())
     }
 }
