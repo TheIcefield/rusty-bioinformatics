@@ -7,5 +7,6 @@ edition = "2024"
 clap = { workspace = true }
 plotters = { workspace = true }
 fna = { path = "../fna" }
+gff = { path = "../gff" }
 nucleotides = { path = "../nucleotides" }
 plot-collection = { path = "../plot-collection" }

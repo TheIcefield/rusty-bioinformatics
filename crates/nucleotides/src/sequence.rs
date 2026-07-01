@@ -387,14 +387,11 @@ impl Sequence {
     }
 
     /// Find ORFs
-    pub fn find_orfs(&self, min_len: usize) -> Result<Vec<Orf>, Box<dyn std::error::Error>> {
+    pub fn find_orfs(&self, min_len: usize) -> Vec<Orf> {
         Self::find_orfs_in_seq(&self.0, min_len)
     }
 
-    fn find_orfs_in_seq(
-        seq: &[Nucleotide],
-        min_len: usize,
-    ) -> Result<Vec<Orf>, Box<dyn std::error::Error>> {
+    fn find_orfs_in_seq(seq: &[Nucleotide], min_len: usize) -> Vec<Orf> {
         const DNA_START_CODON: [Nucleotide; 3] = [Nucleotide::A, Nucleotide::T, Nucleotide::G];
         const RNA_START_CODON: [Nucleotide; 3] = [Nucleotide::A, Nucleotide::U, Nucleotide::G];
 
@@ -433,7 +430,11 @@ impl Sequence {
                     continue;
                 };
 
-                if !stop_codons.contains(codon.try_into()?) {
+                let Ok(codon) = codon.try_into() else {
+                    continue;
+                };
+
+                if !stop_codons.contains(codon) {
                     continue;
                 }
 
@@ -448,7 +449,7 @@ impl Sequence {
             }
         }
 
-        Ok(orfs)
+        orfs
     }
 
     pub fn best_orfs(orfs: Vec<SubSequence>) -> Vec<SubSequence> {
@@ -490,9 +491,9 @@ impl Sequence {
     pub fn find_cpg_islands(
         &self,
         min_len: usize,
+        step: usize,
         min_gc: f64,
         min_oe: f64,
-        step: usize,
     ) -> Vec<CpgIsland> {
         let mut islands = Vec::<(usize, usize)>::new();
         let seq_len = self.length();
@@ -695,7 +696,7 @@ mod tests {
         let seq = Sequence::from_str(&raw_data).unwrap();
 
         // When
-        let islands = seq.find_cpg_islands(WINDOW_LEN, MIN_GC, MIN_OE, WINDOW_STEP);
+        let islands = seq.find_cpg_islands(WINDOW_LEN, WINDOW_STEP, MIN_GC, MIN_OE);
 
         assert_eq!(islands.len(), 1);
         assert_eq!(islands[0].start, 25);
