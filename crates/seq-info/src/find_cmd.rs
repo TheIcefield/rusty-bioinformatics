@@ -1,41 +1,51 @@
-use nucleotides::sequence::CpgIsland;
+use fna::FnaFile;
+use nucleotides::sequence::{CpgIsland, Sequence};
 
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 use plotters::{coord::Shift, prelude::*};
 
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
+
+use crate::consts;
 
 #[derive(Subcommand, Debug)]
 pub enum FindSubcommand {
-    CpgIslands {
-        #[arg(long, default_value_t = 200)]
-        min_len: usize,
-
-        #[arg(long, default_value_t = 50.0)]
-        min_gc: f64,
-
-        #[arg(long, default_value_t = 0.6)]
-        min_oe: f64,
-
-        #[arg(long, default_value_t = 10)]
-        step: usize,
-
-        #[arg(long)]
-        plot: Option<PathBuf>,
-    },
-
-    Orf {
-        #[arg(long, default_value_t = 300)]
-        min_len: usize,
-    },
-
-    Motif {
-        #[arg(long)]
-        sub_str: String,
-    },
+    CpgIslands(FindCpgsArgs),
+    Orfs(FindOrfsArgs),
+    Motifs(FindMotifsArgs),
 }
 
-pub fn plot_cpg_islands(
+#[derive(Args, Debug)]
+pub struct FindCpgsArgs {
+    #[arg(long, default_value_t = consts::DEFAULT_CPG_MIN_LEN)]
+    min_len: usize,
+
+    #[arg(long, default_value_t = consts::DEFAULT_CPG_WIN_STEP)]
+    step: usize,
+
+    #[arg(long, default_value_t = consts::DEFAULT_CPG_MIN_GC)]
+    min_gc: f64,
+
+    #[arg(long, default_value_t = consts::DEFAULT_CPG_MIN_OE)]
+    min_oe: f64,
+
+    #[arg(long)]
+    plot: Option<PathBuf>,
+}
+
+#[derive(Args, Debug)]
+pub struct FindOrfsArgs {
+    #[arg(long, default_value_t = 300)]
+    min_len: usize,
+}
+
+#[derive(Args, Debug)]
+pub struct FindMotifsArgs {
+    #[arg(long)]
+    sub_str: String,
+}
+
+fn plot_cpg_islands(
     root: &DrawingArea<BitMapBackend, Shift>,
     title: &str,
     min_gc: f64,
@@ -82,4 +92,121 @@ pub fn plot_cpg_islands(
     plot_collection::mark_subsequences(&mut gc_chart, "GC", islands, GC_MIN, GC_MAX, style)?;
 
     Ok(())
+}
+
+fn process_find_cpgs_cmd(
+    fna: &FnaFile,
+    args: &FindCpgsArgs,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(charts_dir) = &args.plot {
+        let _ = std::fs::create_dir(charts_dir);
+    }
+
+    fna.records
+        .iter()
+        .enumerate()
+        .map(|(record_idx, record)| {
+            let islands = record
+                .content
+                .find_cpg_islands(args.min_len, args.step, args.min_gc, args.min_oe);
+
+            let metrics = record.content.get_window_gc_oe_metrics(args.min_len, args.step);
+
+            (record_idx, record, islands, metrics)
+        })
+        .try_for_each(
+            |(record_idx, record, islands, (positions, gc_values, oe_values))| -> Result<(), Box<dyn std::error::Error>> {
+                println!("#{record_idx}: {}.", record.header);
+
+                for (island_id, island) in islands.iter().enumerate() {
+                    println!(
+                        "    Island #{island_id}, start: {}, end: {}, len: {}, GC: {}%",
+                        island.start,
+                        island.end,
+                        island.seq.length(),
+                        island.seq.get_gc_content()
+                    );
+                }
+
+                if let Some(charts_dir) = &args.plot {
+                    let chart_path = charts_dir.join(format!("{record_idx}.png"));
+                    let root =
+                        BitMapBackend::new(&chart_path, (1200, 1000)).into_drawing_area();
+
+                    root.fill(&WHITE)?;
+
+                    plot_cpg_islands(
+                        &root,
+                        &format!("{} #{record_idx}", record.header),
+                        args.min_gc,
+                        args.min_oe,
+                        (&positions, &gc_values, &oe_values),
+                        &islands,
+                    )?;
+
+                    root.present()?;
+                }
+
+                Ok(())
+            },
+        )
+}
+
+fn process_find_orfs_cmd(
+    fna: &FnaFile,
+    args: &FindOrfsArgs,
+) -> Result<(), Box<dyn std::error::Error>> {
+    fna.records.iter().enumerate().try_for_each(
+        |(record_idx, record)| -> Result<(), Box<dyn std::error::Error>> {
+            println!("#{record_idx}: {}.", record.header);
+
+            let orfs = record.content.find_orfs(args.min_len);
+
+            for (orf_id, orf) in orfs.iter().enumerate() {
+                println!(
+                    "    ORF #{orf_id}, start: {}, end: {}, len: {}, GC: {}%",
+                    orf.start,
+                    orf.end,
+                    orf.seq.length(),
+                    orf.seq.get_gc_content()
+                );
+            }
+
+            Ok(())
+        },
+    )
+}
+
+fn process_find_motifs_cmd(
+    fna: &FnaFile,
+    args: &FindMotifsArgs,
+) -> Result<(), Box<dyn std::error::Error>> {
+    fna.records.iter().enumerate().try_for_each(
+        |(record_id, record)| -> Result<(), Box<dyn std::error::Error>> {
+            println!("#{record_id}: {}.", record.header);
+
+            let motif = Sequence::from_str(&args.sub_str)?;
+
+            record
+                .content
+                .find_motifs(&motif.0)
+                .into_iter()
+                .for_each(|pos| print!("{pos} "));
+
+            println!();
+
+            Ok(())
+        },
+    )
+}
+
+pub fn process_find_cmd(
+    fna: &FnaFile,
+    sub_cmd: &FindSubcommand,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match sub_cmd {
+        FindSubcommand::CpgIslands(args) => process_find_cpgs_cmd(fna, args),
+        FindSubcommand::Orfs(args) => process_find_orfs_cmd(fna, args),
+        FindSubcommand::Motifs(args) => process_find_motifs_cmd(fna, args),
+    }
 }

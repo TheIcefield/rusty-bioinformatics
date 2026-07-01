@@ -1,10 +1,41 @@
-use std::{collections::HashMap, io::Read, path::Path};
+use std::{collections::HashMap, io::Read, path::Path, str::FromStr};
 
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GffFeatureType {
+    // Areas
+    Gene,
+    PseudoGene,
+    Transcript, // mRNA
+    IncRna,     // miRNA, rRNA, tRNA
+    MobileGeneticElement,
+
+    // Structures
+    Exon,
+    Intron,
+    Cds,
+    CdsExon,
+    FivePrime,  // 5' UTR
+    ThreePrime, // 3' UTR
+    StemLoop,
+    MatureProteinRegionOfCds,
+
+    // Signals
+    StartCodon,
+    StopCodon,
+    SelenoCystein,
+
+    // Chromosomes
+    Chromosome,
+    RepeatRegion,
+    Contig, // scaffold
+
+    Unknown(String),
+}
+
 pub struct GffFeature {
     pub seq_id: String,
     pub source: String,
-    pub feature_type: String,
+    pub feature_type: GffFeatureType,
     pub start: usize,
     pub end: usize,
     pub score: String,
@@ -49,6 +80,9 @@ impl GffFile {
             let Some(feature_type) = parts.get(2).map(|s| s.to_string()) else {
                 return Err("Can't get feature_type".into());
             };
+
+            let feature_type = GffFeatureType::from_str(&feature_type)
+                .unwrap_or(GffFeatureType::Unknown(feature_type));
 
             let Some(Ok(start)) = parts.get(3).map(|s| s.parse::<usize>()) else {
                 return Err("Can't get start".into());
@@ -106,6 +140,40 @@ impl GffFile {
     }
 }
 
+impl FromStr for GffFeatureType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lowercase_s = s.to_lowercase();
+
+        match (s, &lowercase_s[..]) {
+            (_, "gene") => Ok(Self::Gene),
+            (_, "pseudogene") => Ok(Self::PseudoGene),
+            (_, "transcript") | ("mRNA", _) => Ok(Self::Transcript),
+            ("Inc_RNA", _) | ("miRNA", _) | ("rRNA", _) | ("tRNA", _) => Ok(Self::IncRna),
+            (_, "mobile_genetic_element") => Ok(Self::MobileGeneticElement),
+
+            (_, "exon") => Ok(Self::Exon),
+            (_, "intron") => Ok(Self::Intron),
+            (_, "cds") => Ok(Self::Cds),
+            (_, "cds_exon") => Ok(Self::CdsExon),
+            (_, "five_prime_utr") => Ok(Self::FivePrime),
+            (_, "three_prime_utr") => Ok(Self::ThreePrime),
+            (_, "stem_loop") | (_, "stem-loop") => Ok(Self::StemLoop),
+            (_, "mature_protein_region_of_cds") => Ok(Self::MatureProteinRegionOfCds),
+
+            (_, "start_codon") => Ok(Self::StartCodon),
+            (_, "stop_codon") => Ok(Self::StopCodon),
+            (_, "selenocystein") => Ok(Self::SelenoCystein),
+
+            (_, "chromosome") => Ok(Self::Chromosome),
+            (_, "repeat_region") => Ok(Self::RepeatRegion),
+            (_, "contig") | (_, "scaffold") => Ok(Self::Contig),
+            _ => Err(format!("Unknown feature: {s}")),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,7 +183,7 @@ mod tests {
         // Given
         const SEQ_ID: &str = "SEQ_ID_0.0";
         const SOURCE: &str = "RefSeq";
-        const FEATURE_TYPE: &str = "region";
+        const FEATURE_TYPE: &str = "gene";
         const START: usize = 1;
         const END: usize = 100;
         const SCORE: &str = ".";
@@ -153,7 +221,7 @@ mod tests {
         assert_eq!(gff.features.len(), 1);
         assert_eq!(gff.features[0].seq_id, SEQ_ID);
         assert_eq!(gff.features[0].source, SOURCE);
-        assert_eq!(gff.features[0].feature_type, FEATURE_TYPE);
+        assert_eq!(gff.features[0].feature_type, GffFeatureType::Gene);
         assert_eq!(gff.features[0].start, START);
         assert_eq!(gff.features[0].end, END);
         assert_eq!(gff.features[0].score, SCORE);

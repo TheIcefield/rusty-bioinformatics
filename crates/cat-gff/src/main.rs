@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Feature #{feature_id}");
             println!("  SeqId: {}", feature.seq_id);
             println!("  Source: {}", feature.source);
-            println!("  Feature type: {}", feature.feature_type);
+            println!("  Feature type: {:?}", feature.feature_type);
             println!("  Position: {}-{}", feature.start, feature.end);
             println!("  Score: {}", feature.score);
             println!("  Strand: {}", feature.strand);

@@ -143,25 +143,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fna.records
         .iter()
         .enumerate()
-        .filter_map(|(record_id, record)| {
+        .map(|(record_id, record)| {
             let islands = record.content.find_cpg_islands(
                 cli.cgp_min_len,
+                cli.cgp_step,
                 cli.cpg_min_gc,
                 cli.cpg_min_oe,
-                cli.cgp_step,
             );
 
-            let Ok(orfs) = record.content.find_orfs(cli.orf_min_len) else {
-                return None;
-            };
-
+            let orfs = record.content.find_orfs(cli.orf_min_len);
             let orfs = if cli.best_orf_only { Sequence::best_orfs(orfs) } else { orfs };
 
             let intersections = record.content.find_subsequence_intersections(&islands, &orfs);
 
             let metrics = record.content.get_window_gc_oe_metrics(std::cmp::min(cli.cgp_min_len, cli.orf_min_len), cli.cgp_step);
 
-            Some((record_id, record, islands, orfs, intersections, metrics))
+            (record_id, record, islands, orfs, intersections, metrics)
         })
         .try_for_each(
             |(record_id, record, islands, orfs, intersections, metrics)| -> Result<(), Box<dyn std::error::Error>> {
