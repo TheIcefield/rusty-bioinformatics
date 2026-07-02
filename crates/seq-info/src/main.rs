@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match &cli.command {
         ContentSubcommand::Info(args) => info_cmd::process_info_cmd(&fna, args),
-        ContentSubcommand::Find(args) => find_cmd::process_find_cmd(&fna, args),
+        ContentSubcommand::Find(args) => find_cmd::process_find_cmd(&fna, &gff, args),
         ContentSubcommand::Compare(args) => compare_cmd::process_compare_cmd(&fna, args),
     }
 }

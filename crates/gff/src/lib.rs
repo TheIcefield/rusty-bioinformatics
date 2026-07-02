@@ -1,8 +1,9 @@
-use std::{collections::HashMap, io::Read, path::Path, str::FromStr};
+use std::{collections::HashMap, fmt::Display, io::Read, path::Path, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GffFeatureType {
     // Areas
+    Region,
     Gene,
     PseudoGene,
     Transcript, // mRNA
@@ -147,6 +148,7 @@ impl FromStr for GffFeatureType {
         let lowercase_s = s.to_lowercase();
 
         match (s, &lowercase_s[..]) {
+            (_, "region") => Ok(Self::Region),
             (_, "gene") => Ok(Self::Gene),
             (_, "pseudogene") => Ok(Self::PseudoGene),
             (_, "transcript") | ("mRNA", _) => Ok(Self::Transcript),
@@ -170,6 +172,34 @@ impl FromStr for GffFeatureType {
             (_, "repeat_region") => Ok(Self::RepeatRegion),
             (_, "contig") | (_, "scaffold") => Ok(Self::Contig),
             _ => Err(format!("Unknown feature: {s}")),
+        }
+    }
+}
+
+impl Display for GffFeatureType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Region => write!(f, "region"),
+            Self::Gene => write!(f, "gene"),
+            Self::PseudoGene => write!(f, "pseudogene"),
+            Self::Transcript => write!(f, "transcript"),
+            Self::IncRna => write!(f, "incodable RNA"),
+            Self::MobileGeneticElement => write!(f, "mobile genetic element"),
+            Self::Exon => write!(f, "exon"),
+            Self::Intron => write!(f, "intron"),
+            Self::Cds => write!(f, "CDS"),
+            Self::CdsExon => write!(f, "CDS-exon"),
+            Self::FivePrime => write!(f, "5'UTR"),
+            Self::ThreePrime => write!(f, "3'UTR"),
+            Self::StemLoop => write!(f, "stem-loop"),
+            Self::MatureProteinRegionOfCds => write!(f, "mature protein region of CDS"),
+            Self::StartCodon => write!(f, "start-codon"),
+            Self::StopCodon => write!(f, "stop-codon"),
+            Self::SelenoCystein => write!(f, "selenocystein"),
+            Self::Chromosome => write!(f, "chromosome"),
+            Self::RepeatRegion => write!(f, "repeat-region"),
+            Self::Contig => write!(f, "contig"),
+            Self::Unknown(feature_type) => write!(f, "{feature_type}"),
         }
     }
 }
