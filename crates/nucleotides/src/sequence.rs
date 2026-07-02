@@ -12,6 +12,13 @@ pub struct SubSequence {
     pub seq: Sequence,
 }
 
+#[derive(Default, Clone)]
+pub struct GcMetrics {
+    pub positions: Vec<usize>,
+    pub gc_values: Vec<f64>,
+    pub oe_values: Vec<f64>,
+}
+
 impl SubSequence {
     pub fn new_in(seq: &[Nucleotide], start: usize, end: usize) -> Option<Self> {
         let mut sub_seq = Sequence::default();
@@ -549,11 +556,7 @@ impl Sequence {
             .collect()
     }
 
-    pub fn get_window_gc_oe_metrics(
-        &self,
-        window: usize,
-        step: usize,
-    ) -> (Vec<usize>, Vec<f64>, Vec<f64>) {
+    pub fn get_window_gc_oe_metrics(&self, window: usize, step: usize) -> GcMetrics {
         let mut positions = Vec::new();
         let mut gc_values = Vec::new();
         let mut oe_values = Vec::new();
@@ -572,7 +575,11 @@ impl Sequence {
             start += step;
         }
 
-        (positions, gc_values, oe_values)
+        GcMetrics {
+            positions,
+            gc_values,
+            oe_values,
+        }
     }
 
     fn observed_expected_cpg(seq: &[Nucleotide]) -> f64 {

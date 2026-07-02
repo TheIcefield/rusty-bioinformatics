@@ -6,7 +6,6 @@ use gff::GffFile;
 use std::path::PathBuf;
 
 pub mod compare_cmd;
-pub mod consts;
 pub mod find_cmd;
 pub mod info_cmd;
 
