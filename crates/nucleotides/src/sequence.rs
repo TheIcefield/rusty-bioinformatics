@@ -360,26 +360,16 @@ impl Sequence {
     ) -> Vec<(SubSequence, usize, usize)> {
         let mut intersections = Vec::new();
 
-        let mut i = 0;
-        let mut j = 0;
-
-        while i < first.len() && j < second.len() {
-            let a = &first[i];
-            let b = &second[j];
-
-            if a.start <= b.end && b.start <= a.end {
+        for (i, a) in first.iter().enumerate() {
+            for (j, b) in second.iter().enumerate() {
                 let start = std::cmp::max(a.start, b.start);
                 let end = std::cmp::max(a.end, b.end);
 
-                let intersection = SubSequence::new_in(seq, start, end).unwrap();
+                if a.start <= b.end && b.start <= a.end {
+                    let intersection = SubSequence::new_in(seq, start, end).unwrap();
 
-                intersections.push((intersection, i, j));
-            }
-
-            if a.end < b.end {
-                i += 1;
-            } else {
-                j += 1;
+                    intersections.push((intersection, i, j));
+                }
             }
         }
 
