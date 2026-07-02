@@ -1,0 +1,14 @@
+[package]
+name = "seq-info-gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+plotters = { workspace = true }
+iced = { workspace = true }
+iced_aw = { workspace = true }
+iced_plot = { workspace = true }
+rfd = { workspace = true }
+fna = { path = "../fna" }
+nucleotides = { path = "../nucleotides" }
+plot-collection = { path = "../plot-collection" }

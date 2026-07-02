@@ -1,8 +1,9 @@
 use clap::Parser;
 
 use fna::FnaFile;
-use nucleotides::sequence::{CpgIsland, Orf, Sequence};
-use plotters::{coord::Shift, prelude::*};
+use nucleotides::sequence::Sequence;
+use plot_collection::PlotCpgIslandsOptions;
+use plotters::prelude::*;
 
 use std::path::PathBuf;
 
@@ -40,95 +41,6 @@ struct Cli {
     /// If ORF#1 is inside of ORF#2 keep only ORF#2
     #[arg(long, default_value_t = false)]
     best_orf_only: bool,
-}
-
-fn plot_cpg_orf_intersections(
-    root: &DrawingArea<BitMapBackend, Shift>,
-    title: &str,
-    min_gc: f64,
-    min_oe: f64,
-    metrics: (&[usize], &[f64], &[f64]),
-    islands: &[CpgIsland],
-    orfs: &[Orf],
-) -> Result<(), Box<dyn std::error::Error>> {
-    const FONT_NAME: &str = "sans-serif";
-    const TITLE_FONT_SIZE: f64 = 30f64;
-    const CPG_ISLAND_LEGEND: &str = "CpG-islands";
-    const ORF_LEGEND: &str = "ORF";
-    const CAPTION_FONT_SIZE: f64 = 20f64;
-    const OE_MIN: f64 = 0.0;
-    const OE_MAX: f64 = 2.0;
-    const GC_MIN: f64 = 0.0;
-    const GC_MAX: f64 = 100.0;
-
-    let (positions, gc_values, oe_values) = metrics;
-    let x_min = *positions.first().unwrap_or(&0) as f64;
-    let x_max = *positions.last().unwrap_or(&0) as f64;
-
-    root.titled(title, (FONT_NAME, TITLE_FONT_SIZE))?;
-
-    let (upper, lower) = root.split_vertically(500);
-
-    let mut oe_chart = ChartBuilder::on(&upper)
-        .caption("Observed/Expected CpG", (FONT_NAME, CAPTION_FONT_SIZE))
-        .margin(10)
-        .margin_top(30)
-        .x_label_area_size(40)
-        .y_label_area_size(50)
-        .build_cartesian_2d(x_min..x_max, OE_MIN..OE_MAX)?;
-
-    let mut gc_chart = ChartBuilder::on(&lower)
-        .caption("GC content (%)", (FONT_NAME, CAPTION_FONT_SIZE))
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(50)
-        .build_cartesian_2d(x_min..x_max, GC_MIN..GC_MAX)?;
-
-    let orf_style = Into::<ShapeStyle>::into(&RGBColor(150, 100, 0).mix(0.2)).filled();
-    let island_style = Into::<ShapeStyle>::into(&RGBColor(0, 200, 0).mix(0.3)).filled();
-
-    // Draw ORF
-    plot_collection::mark_subsequences(&mut gc_chart, ORF_LEGEND, orfs, GC_MIN, GC_MAX, orf_style)?;
-    plot_collection::mark_subsequences(&mut oe_chart, ORF_LEGEND, orfs, OE_MIN, OE_MAX, orf_style)?;
-
-    // Draw CpG-islands
-    plot_collection::mark_subsequences(
-        &mut gc_chart,
-        CPG_ISLAND_LEGEND,
-        islands,
-        GC_MIN,
-        GC_MAX,
-        island_style,
-    )?;
-
-    plot_collection::mark_subsequences(
-        &mut oe_chart,
-        CPG_ISLAND_LEGEND,
-        islands,
-        OE_MIN,
-        OE_MAX,
-        island_style,
-    )?;
-
-    // Draw GC and O/E values
-    plot_collection::plot_gc_values(&mut gc_chart, positions, gc_values, min_gc)?;
-    plot_collection::plot_oe_values(&mut oe_chart, positions, oe_values, min_oe)?;
-
-    oe_chart
-        .configure_series_labels()
-        .background_style(WHITE.mix(0.8))
-        .border_style(BLACK)
-        .draw()?;
-
-    gc_chart
-        .configure_series_labels()
-        .background_style(WHITE.mix(0.8))
-        .border_style(BLACK)
-        .draw()?;
-
-    root.present()?;
-
-    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -206,14 +118,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     root.fill(&WHITE)?;
 
-                    plot_cpg_orf_intersections(
+                    let opts = PlotCpgIslandsOptions {
+                        show_gc: true,
+                        show_oe: true,
+                        show_min_gc: true,
+                        show_min_oe: true,
+                        show_cpg_islands: true,
+                        show_orfs: true,
+                        min_gc: cli.cpg_min_gc,
+                        min_oe: cli.cpg_min_oe,
+                    };
+
+                    let title =  format!("{} #{record_id}", record.header);
+
+                    plot_collection::plot_cpg_and_orf(
                         &root,
-                        &format!("{} #{record_id}", record.header),
-                        cli.cpg_min_gc,
-                        cli.cpg_min_oe,
-                        (&metrics.0, &metrics.1, &metrics.2),
-                        &islands,
-                        &orfs
+                        &title,
+                        &metrics,
+                        &Some(&islands),
+                        &Some(&orfs),
+                        &opts
                     )?;
 
                     root.present()?;
