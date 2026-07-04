@@ -50,6 +50,10 @@ struct Cli {
     /// Displays attributes
     #[arg(long)]
     attributes: bool,
+
+    /// Displays all
+    #[arg(short, long)]
+    all: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -66,19 +70,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .for_each(|(feature_id, feature)| {
             println!("Feature #{feature_id}:");
 
-            if cli.seq_id {
+            if cli.all || cli.seq_id {
                 println!("  SeqId: {}", feature.seq_id);
             }
 
-            if cli.source {
+            if cli.all || cli.source {
                 println!("  Source: {}", feature.source);
             }
 
-            if cli.feature_type {
+            if cli.all || cli.feature_type {
                 println!("  Feature type: {}", feature.feature_type);
             }
 
-            if cli.position {
+            if cli.all || cli.position {
                 println!(
                     "  Position: {}-{}. (Total len: {})",
                     feature.start,
@@ -87,19 +91,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
 
-            if cli.score {
+            if cli.all || cli.score {
                 println!("  Score: {}", feature.score);
             }
 
-            if cli.strand {
+            if cli.all || cli.strand {
                 println!("  Strand: {}", feature.strand);
             }
 
-            if cli.phase {
+            if cli.all || cli.phase {
                 println!("  Phase: {}", feature.phase);
             }
 
-            if cli.attributes {
+            if cli.all || cli.attributes {
                 feature
                     .attributes
                     .iter()
